@@ -563,16 +563,19 @@ async function handlePayment(){
     const result=await squareCard.tokenize();
     if(result.status==='OK'){
       const totalCents=Math.max(0,(selectedPrice-promoDiscount))*100;
-      const payRes=await fetch('https://connect.squareupsandbox.com/v2/payments',{
+      const payRes=await fetch('https://ocupmoghnqascnxjfsez.supabase.co/functions/v1/process-payment',{
         method:'POST',
-        headers:{'Content-Type':'application/json','Square-Version':'2024-01-18','Authorization':'Bearer '+SQUARE_TOKEN},
+        headers:{
+          'Content-Type':'application/json',
+          'apikey':SUPABASE_KEY,
+          'Authorization':'Bearer '+SUPABASE_KEY
+        },
         body:JSON.stringify({
-          source_id:result.token,
-          idempotency_key:genTicket()+Date.now(),
-          amount_money:{amount:totalCents,currency:'USD'},
-          location_id:SQUARE_LOCATION,
-          buyer_email_address:email,
-          note:selectedTier+' — '+fname+' '+lname
+          token:result.token,
+          amount:totalCents,
+          email:email,
+          note:selectedTier+' — '+fname+' '+lname,
+          location_id:SQUARE_LOCATION
         })
       });
       const payData=await payRes.json();
