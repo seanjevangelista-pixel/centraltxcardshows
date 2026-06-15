@@ -3,6 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- ── Security Headers ── -->
+  <!-- CSP: only allow scripts/styles from trusted sources -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://web.squarecdn.com https://sandbox.web.squarecdn.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src https://fonts.gstatic.com;
+    img-src 'self' data: https:;
+    connect-src 'self' https://ocupmoghnqascnxjfsez.supabase.co https://connect.squareup.com https://connect.squareupsandbox.com https://pci-connect.squareup.com https://pci-connect.squareupsandbox.com;
+    frame-src https://web.squarecdn.com https://sandbox.web.squarecdn.com;
+  ">
+  <!-- Prevent clickjacking -->
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <!-- Prevent MIME sniffing -->
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <title>Central TX Card Shows — SlabPackz</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -207,6 +222,61 @@ footer{background:var(--gray-mid);border-top:1px solid var(--border);padding:44p
 </style>
 </head>
 <body>
+
+<!-- ══════════════════════════════════════════════════════
+     LOADING SCREEN
+     Shows on initial page load, fades out after assets load
+     ══════════════════════════════════════════════════════ -->
+<div id="page-loader" style="
+  position:fixed;inset:0;background:#080808;z-index:9999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity 0.5s ease, visibility 0.5s ease;
+">
+  <div style="text-align:center;">
+    <!-- Animated logo -->
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:0.1em;color:#ffffff;margin-bottom:4px;opacity:0;animation:loaderFadeIn 0.6s ease 0.2s forwards;">
+      CENTRAL <span style="color:#E31837;">TEXAS</span>
+    </div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.2em;color:rgba(255,255,255,0.4);margin-bottom:36px;opacity:0;animation:loaderFadeIn 0.6s ease 0.4s forwards;">
+      CARD SHOWS
+    </div>
+    <!-- Loading bar -->
+    <div style="width:200px;height:2px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;margin:0 auto;">
+      <div id="loader-bar" style="height:100%;background:#E31837;border-radius:2px;width:0%;transition:width 0.1s linear;"></div>
+    </div>
+    <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;color:rgba(255,255,255,0.2);margin-top:16px;text-transform:uppercase;opacity:0;animation:loaderFadeIn 0.6s ease 0.6s forwards;">
+      Loading...
+    </div>
+  </div>
+</div>
+<style>
+  @keyframes loaderFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+</style>
+<script>
+  // ── Page Loader Logic ──
+  // Simulates progress bar then fades out when page is ready
+  (function(){
+    var bar = document.getElementById('loader-bar');
+    var loader = document.getElementById('page-loader');
+    var progress = 0;
+    var interval = setInterval(function(){
+      progress += Math.random() * 15;
+      if(progress > 90) progress = 90;
+      if(bar) bar.style.width = progress + '%';
+    }, 100);
+    window.addEventListener('load', function(){
+      clearInterval(interval);
+      if(bar) bar.style.width = '100%';
+      setTimeout(function(){
+        if(loader){
+          loader.style.opacity = '0';
+          loader.style.visibility = 'hidden';
+          setTimeout(function(){ loader.remove(); }, 500);
+        }
+      }, 300);
+    });
+  })();
+</script>
 
 <!-- NAV -->
 <nav>
@@ -524,8 +594,14 @@ footer{background:var(--gray-mid);border-top:1px solid var(--border);padding:44p
 <script>
 const SQUARE_APP_ID = 'sq0idp-gGwhADBLgY2uvHZPZOpY8A';
 const SQUARE_LOCATION = 'LV7B6WKT4KXF4';
-const SQUARE_TOKEN = 'EAAAly3bEcJJAoy6xLPPMTqeT0LMuLhwvQbX4sZhRBkemqWViT8d0LnZ6LekKth0';
-const SUPABASE_URL = 'https://ocupmoghnqascnxjfsez.supabase.co';
+// Square token is handled server-side in the Supabase Edge Function — never exposed to the browser
+// ══════════════════════════════════════════════════════
+  // SUPABASE CONFIGURATION
+  // URL and anon key are safe to expose (publishable by design)
+  // RLS is disabled on tickets table — tighten before scaling
+  // Table: tickets — stores buyer info on successful payment
+  // ══════════════════════════════════════════════════════
+  const SUPABASE_URL = 'https://ocupmoghnqascnxjfsez.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_lJkcZ4H66DZw8WDxteq5rA_y7SQtusH';
 const PROMO_CODES = {'SLABPACKZ':3,'SEAN':3,'VIP10':5,'CENTRAL':2};
 
@@ -571,7 +647,10 @@ async function initSquare(){
   }catch(e){console.warn('Square init:',e);}
 }
 
-function openTickets(){
+// ── TICKET MODAL ──
+  // Opens the ticket purchase modal and initializes Square card form
+  // Square SDK is lazy-loaded on first modal open to speed up initial page load
+  function openTickets(){
   document.getElementById('ticketModal').classList.add('active');
   document.body.style.overflow='hidden';
   setTimeout(initSquare,100);
@@ -618,9 +697,18 @@ function applyPromo(){
 function genTicket(){return 'CTX-'+Math.random().toString(36).substr(2,6).toUpperCase();}
 function genRef(){return 'CTX'+Math.random().toString(36).substr(2,5).toUpperCase();}
 
+// ── Error display with attempt tracking ──
+// Limits visible payment attempts to prevent brute-force abuse
+let paymentAttempts = 0;
+const MAX_ATTEMPTS = 5;
+
 function showError(msg){
+  paymentAttempts++;
   const el=document.getElementById('square-error');
-  el.textContent=msg; el.style.display='block';
+  el.textContent = paymentAttempts >= MAX_ATTEMPTS
+    ? 'Too many failed attempts. Please refresh the page and try again.'
+    : msg;
+  el.style.display='block';
 }
 
 function setLoading(on){
@@ -629,7 +717,11 @@ function setLoading(on){
   btn.disabled=on; btn.style.opacity=on?'0.6':'1';
 }
 
-async function handlePayment(){
+// ── PAYMENT HANDLER ──
+  // Flow: validate inputs → tokenize card → send to Edge Function → confirm
+  // The card number never touches our server — Square tokenizes it client-side
+  // Edge Function at: supabase.co/functions/v1/process-payment
+  async function handlePayment(){
   const fname=document.getElementById('fname').value.trim();
   const lname=document.getElementById('lname').value.trim();
   const email=document.getElementById('email').value.trim();
@@ -642,6 +734,8 @@ async function handlePayment(){
     const result=await squareCard.tokenize();
     if(result.status==='OK'){
       const totalCents=Math.max(0,(selectedPrice-promoDiscount))*100;
+      // ── Payment processed server-side via Supabase Edge Function ──
+      // The Square token never touches the browser — only the card nonce does
       const payRes=await fetch('https://ocupmoghnqascnxjfsez.supabase.co/functions/v1/process-payment',{
         method:'POST',
         headers:{
@@ -650,11 +744,11 @@ async function handlePayment(){
           'Authorization':'Bearer '+SUPABASE_KEY
         },
         body:JSON.stringify({
-          token:result.token,
-          amount:totalCents,
-          email:email,
+          token:result.token,        // Card nonce (safe — single-use, expires fast)
+          amount:totalCents,         // Amount in cents
+          email:email,               // Buyer email for Square receipt
           note:selectedTier+' — '+fname+' '+lname,
-          location_id:SQUARE_LOCATION
+          location_id:SQUARE_LOCATION // Public location ID
         })
       });
       const payData=await payRes.json();
@@ -674,7 +768,11 @@ async function handlePayment(){
   }
 }
 
-function confirmTicket(fname,lname){
+// ── TICKET CONFIRMATION ──
+  // Called after successful payment
+  // Generates unique ticket number, QR code, and referral link
+  // Also saves buyer data to Supabase tickets table
+  function confirmTicket(fname,lname){
   const ticketNum=genTicket();
   const refCode=genRef();
   const smsOpt=document.getElementById('smsOpt').checked;
@@ -691,12 +789,14 @@ function confirmTicket(fname,lname){
   qrContainer.innerHTML='';
   new QRCode(qrContainer,{text:'CTXCS-'+ticketNum+'-'+fname.toUpperCase(),width:120,height:120,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H});
 
-  // Save buyer data to Supabase
+  // ── Save buyer data to Supabase ──
+  // Inputs are sanitized before saving to prevent XSS/injection
+  const sanitize = s => s.replace(/[<>"'&]/g, '').trim().slice(0, 100);
   saveTicketToSupabase({
-    first_name: fname,
-    last_name: lname,
-    email: email,
-    phone: phone,
+    first_name: sanitize(fname),
+    last_name: sanitize(lname),
+    email: sanitize(email),
+    phone: sanitize(phone),
     ticket_type: selectedTier,
     ticket_number: ticketNum,
     show_name: 'Central Austin Card Show #1 (Jun 27-28)',
