@@ -614,6 +614,9 @@ footer{background:var(--gray-mid);border-top:1px solid var(--border);padding:44p
           <div><div class="td-label">Venue</div><div class="td-val">Colton Hotel · Austin, TX</div></div>
         </div>
         <div class="qr-box" id="ticket-qr-container" style="width:130px;height:130px;background:white;border-radius:4px;margin:0 auto;display:flex;align-items:center;justify-content:center;overflow:hidden;"></div>
+        <button onclick="downloadQR()" style="display:flex;align-items:center;gap:6px;margin:12px auto 0;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:3px;padding:8px 16px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.5);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.4)';this.style.color='#fff'" onmouseout="this.style.borderColor='rgba(255,255,255,0.15)';this.style.color='rgba(255,255,255,0.5)'">
+          ↓ Save QR Code
+        </button>
       </div>
       <div class="ref-section">
         <div class="ref-title">Share & Earn</div>
@@ -901,7 +904,28 @@ function setLoading(on){
   setLoading(false);
 }
 
-function copyRef(){
+// ── QR Code Download ──
+  // Grabs the canvas/img from the QR container and triggers a download
+  function downloadQR(){
+    const container = document.getElementById('ticket-qr-container');
+    const canvas = container.querySelector('canvas');
+    const img = container.querySelector('img');
+    const ticketNum = document.getElementById('conf-ticket-num').textContent.replace('TICKET #','').trim();
+    
+    if(canvas){
+      const link = document.createElement('a');
+      link.download = 'CTX-Ticket-'+ticketNum+'.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } else if(img){
+      const link = document.createElement('a');
+      link.download = 'CTX-Ticket-'+ticketNum+'.png';
+      link.href = img.src;
+      link.click();
+    }
+  }
+
+  function copyRef(){
   const link=document.getElementById('ref-link-display').textContent;
   navigator.clipboard.writeText('https://'+link).then(()=>{
     const btn=document.querySelector('.btn-copy');
