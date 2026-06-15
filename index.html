@@ -55,10 +55,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .stat-label{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.7);margin-top:2px;}
 
 /* BRAND BANNER */
-.brand-banner{background:var(--white);padding:0;overflow:hidden;border-top:3px solid var(--red);border-bottom:3px solid var(--red);height:72px;display:flex;align-items:center;}
-.brand-track{display:inline-flex;align-items:center;height:72px;animation:brandscroll 24s linear infinite;will-change:transform;}
+.brand-banner{background:var(--white);overflow:hidden;border-top:3px solid var(--red);border-bottom:3px solid var(--red);height:72px;display:flex;align-items:center;position:relative;width:100vw;margin-left:0;}
+.brand-track{display:inline-flex;align-items:center;height:72px;animation:brandscroll 28s linear infinite;will-change:transform;white-space:nowrap;}
 .brand-banner:hover .brand-track{animation-play-state:paused;}
-@keyframes brandscroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+@keyframes brandscroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 .brand-item{display:inline-flex;align-items:center;justify-content:center;padding:0 44px;height:72px;flex-shrink:0;}
 .brand-sep{color:var(--red);font-size:8px;opacity:0.25;flex-shrink:0;}
 .brand-logo{height:32px;width:auto;object-fit:contain;display:block;mix-blend-mode:multiply;flex-shrink:0;}
@@ -294,6 +294,38 @@ footer{background:var(--gray-mid);border-top:1px solid var(--border);padding:44p
         </div>
         <span class="btn-outline" style="font-size:12px;padding:10px 24px;opacity:0.4;pointer-events:none;">Announced at Show #1</span>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- LOCATION -->
+<section id="location" style="padding:0;background:var(--black);">
+  <div style="max-width:1100px;margin:0 auto;padding:60px 24px 0;">
+    <div class="section-label">Venue</div>
+    <div class="section-title" style="margin-bottom:24px;">FIND US</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--border);margin-bottom:0;">
+      <div style="background:var(--gray-mid);padding:40px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.04em;color:var(--white);margin-bottom:8px;">Colton Hotel</div>
+        <div style="font-size:14px;color:var(--muted);line-height:1.8;margin-bottom:20px;">
+          South Congress Ave<br>
+          Austin, TX<br><br>
+          <span style="color:var(--red);">Saturday, June 27, 2026</span><br>
+          VIP Entry: 9:30 AM<br>
+          GA Doors: 10:00 AM
+        </div>
+        <a href="https://maps.google.com/?q=Colton+Hotel+South+Congress+Austin+TX" target="_blank" class="btn-primary" style="display:inline-block;font-size:12px;padding:10px 24px;width:fit-content;">
+          Get Directions →
+        </a>
+      </div>
+      <a href="https://maps.google.com/?q=Colton+Hotel+South+Congress+Austin+TX" target="_blank" style="display:block;background:var(--gray-mid);min-height:320px;overflow:hidden;position:relative;text-decoration:none;">
+        <img 
+          src="https://maps.googleapis.com/maps/api/staticmap?center=Colton+Hotel,South+Congress+Ave,Austin,TX&zoom=15&size=600x320&scale=2&maptype=roadmap&markers=color:red%7CColton+Hotel,South+Congress+Ave,Austin,TX&style=element:geometry%7Ccolor:0x1a1a1a&style=element:labels.text.fill%7Ccolor:0x888888&style=element:labels.text.stroke%7Ccolor:0x1a1a1a&style=feature:road%7Celement:geometry%7Ccolor:0x2a2a2a&style=feature:water%7Celement:geometry%7Ccolor:0x0a0a0a&key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY"
+          alt="Colton Hotel Map"
+          style="width:100%;height:320px;object-fit:cover;display:block;opacity:0.85;"
+          onerror="this.parentElement.innerHTML='<div style='display:flex;flex-direction:column;align-items:center;justify-content:center;height:320px;gap:16px;'><div style='font-size:40px;'>📍</div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;letter-spacing:0.1em;color:#ffffff;'>Colton Hotel</div><div style='font-size:13px;color:#666;'>South Congress Ave · Austin, TX</div><div style='font-size:11px;color:#E31837;margin-top:8px;letter-spacing:0.1em;'>CLICK FOR DIRECTIONS</div></div>'"
+        />
+        <div style="position:absolute;bottom:16px;right:16px;background:var(--red);color:white;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:8px 14px;border-radius:3px;">Open in Maps ↗</div>
+      </a>
     </div>
   </div>
 </section>
