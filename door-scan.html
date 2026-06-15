@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Door Scanner — Central TX Card Shows</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { background: #080808; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; min-height: 100vh; }
+
+  .header {
+    background: #111;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .header-logo { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #fff; }
+  .header-logo span { color: #E31837; }
+  .header-badge { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; background: rgba(227,24,55,0.15); color: #E31837; border: 1px solid rgba(227,24,55,0.3); padding: 4px 10px; border-radius: 4px; }
+
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .stat { text-align: center; padding: 14px 8px; background: #111; }
+  .stat-num { font-size: 24px; font-weight: 700; color: #fff; line-height: 1; }
+  .stat-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-top: 3px; }
+  #stat-checked { color: #4ade80; }
+  #stat-invalid { color: #E31837; }
+
+  .scanner-section { padding: 20px; }
+
+  .scanner-box {
+    background: #111;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .scanner-label {
+    padding: 14px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .scanner-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+  }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+  }
+  .status-dot.active { background: #4ade80; animation: blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+  #reader { width: 100%; }
+  #reader video { width: 100% !important; border-radius: 0 !important; }
+  #reader img { display: none; }
+
+  .start-btn {
+    width: 100%;
+    padding: 18px;
+    background: #E31837;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-bottom: 16px;
+  }
+  .start-btn:active { background: #B5122B; }
+  .start-btn.stop { background: #222; border: 1px solid rgba(255,255,255,0.1); }
+
+  /* RESULT CARD */
+  .result-card {
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+    display: none;
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
+
+  .result-card.valid {
+    background: rgba(74,222,128,0.06);
+    border: 1px solid rgba(74,222,128,0.25);
+    display: block;
+  }
+  .result-card.invalid {
+    background: rgba(227,24,55,0.06);
+    border: 1px solid rgba(227,24,55,0.25);
+    display: block;
+  }
+  .result-card.already {
+    background: rgba(239,159,39,0.06);
+    border: 1px solid rgba(239,159,39,0.25);
+    display: block;
+  }
+
+  .result-icon {
+    font-size: 48px;
+    text-align: center;
+    margin-bottom: 12px;
+    line-height: 1;
+  }
+  .result-status {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .result-card.valid .result-status { color: #4ade80; }
+  .result-card.invalid .result-status { color: #E31837; }
+  .result-card.already .result-status { color: #EF9F27; }
+
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 13px;
+  }
+  .result-row:last-child { border-bottom: none; }
+  .result-key { color: rgba(255,255,255,0.4); }
+  .result-val { color: #fff; font-weight: 500; text-align: right; }
+
+  /* MANUAL LOOKUP */
+  .manual-section {
+    background: #111;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .manual-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    margin-bottom: 12px;
+  }
+  .manual-row { display: flex; gap: 8px; }
+  .manual-input {
+    flex: 1;
+    background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #fff;
+    font-family: monospace;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    outline: none;
+  }
+  .manual-input:focus { border-color: #E31837; }
+  .manual-btn {
+    background: #222;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding: 12px 18px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    white-space: nowrap;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .manual-btn:active { background: #333; }
+
+  /* RECENT SCANS */
+  .recent-section {
+    background: #111;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .recent-title {
+    padding: 14px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .recent-empty {
+    padding: 24px 16px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.2);
+    text-align: center;
+  }
+  .recent-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .recent-item:last-child { border-bottom: none; }
+  .recent-name { font-size: 13px; font-weight: 500; color: #fff; }
+  .recent-ticket { font-size: 11px; color: rgba(255,255,255,0.3); font-family: monospace; margin-top: 2px; }
+  .recent-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .recent-badge.valid { background: rgba(74,222,128,0.1); color: #4ade80; }
+  .recent-badge.invalid { background: rgba(227,24,55,0.1); color: #E31837; }
+  .recent-badge.already { background: rgba(239,159,39,0.1); color: #EF9F27; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">CENTRAL <span>TX</span> CARD SHOWS</div>
+  <div class="header-badge">Door Scanner</div>
+</div>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat">
+    <div class="stat-num" id="stat-total">0</div>
+    <div class="stat-label">Scanned</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" id="stat-checked">0</div>
+    <div class="stat-label">Valid</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" id="stat-invalid">0</div>
+    <div class="stat-label">Rejected</div>
+  </div>
+</div>
+
+<!-- SCANNER -->
+<div class="scanner-section">
+
+  <div class="scanner-box">
+    <div class="scanner-label">
+      <span>QR Scanner</span>
+      <div class="scanner-status">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Ready</span>
+      </div>
+    </div>
+    <div id="reader"></div>
+  </div>
+
+  <button class="start-btn" id="scan-btn" onclick="toggleScanner()">
+    Start Scanner
+  </button>
+
+  <!-- RESULT -->
+  <div class="result-card" id="result-card">
+    <div class="result-icon" id="result-icon"></div>
+    <div class="result-status" id="result-status"></div>
+    <div id="result-details"></div>
+  </div>
+
+  <!-- MANUAL LOOKUP -->
+  <div class="manual-section">
+    <div class="manual-title">Manual Ticket Lookup</div>
+    <div class="manual-row">
+      <input class="manual-input" id="manual-input" placeholder="Enter ticket # e.g. CTX-R7KW2Q" />
+      <button class="manual-btn" onclick="manualLookup()">Look Up</button>
+    </div>
+  </div>
+
+  <!-- RECENT SCANS -->
+  <div class="recent-section">
+    <div class="recent-title">Recent Scans</div>
+    <div id="recent-list"><div class="recent-empty">No scans yet — start scanning to see results here</div></div>
+  </div>
+
+</div>
+
+<script>
+// ── CONFIG ──
+const SUPABASE_URL = 'https://ocupmoghnqascnxjfsez.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_lJkcZ4H66DZw8WDxteq5rA_y7SQtusH';
+
+// ── STATE ──
+let scanner = null;
+let scanning = false;
+let stats = { total: 0, valid: 0, invalid: 0 };
+let recentScans = [];
+let lastScanned = '';
+let scanCooldown = false;
+
+// ── SCANNER TOGGLE ──
+function toggleScanner() {
+  if (!scanning) startScanner();
+  else stopScanner();
+}
+
+function startScanner() {
+  const btn = document.getElementById('scan-btn');
+  const dot = document.getElementById('status-dot');
+  const statusText = document.getElementById('status-text');
+
+  scanner = new Html5Qrcode('reader');
+  scanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    onScanSuccess,
+    () => {}
+  ).then(() => {
+    scanning = true;
+    btn.textContent = 'Stop Scanner';
+    btn.classList.add('stop');
+    dot.classList.add('active');
+    statusText.textContent = 'Scanning...';
+  }).catch(err => {
+    alert('Camera error: ' + err);
+  });
+}
+
+function stopScanner() {
+  if (scanner) {
+    scanner.stop().then(() => {
+      scanning = false;
+      const btn = document.getElementById('scan-btn');
+      btn.textContent = 'Start Scanner';
+      btn.classList.remove('stop');
+      document.getElementById('status-dot').classList.remove('active');
+      document.getElementById('status-text').textContent = 'Ready';
+    });
+  }
+}
+
+// ── ON QR SCAN ──
+async function onScanSuccess(decodedText) {
+  if (scanCooldown || decodedText === lastScanned) return;
+  lastScanned = decodedText;
+  scanCooldown = true;
+  setTimeout(() => { scanCooldown = false; lastScanned = ''; }, 3000);
+
+  // Extract ticket number from QR string: CTXCS-CTX-XXXXXX-NAME
+  const parts = decodedText.split('-');
+  if (!decodedText.startsWith('CTXCS-') || parts.length < 3) {
+    showResult('invalid', null, 'Invalid QR code — not a valid ticket');
+    addRecent(null, 'invalid', 'Unknown QR');
+    return;
+  }
+
+  const ticketNum = parts[1] + '-' + parts[2]; // e.g. CTX-R7KW2Q
+  await checkTicket(ticketNum);
+}
+
+// ── CHECK TICKET IN SUPABASE ──
+async function checkTicket(ticketNum) {
+  try {
+    // Look up ticket
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/tickets?ticket_number=eq.' + ticketNum + '&select=*',
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
+    );
+    const data = await res.json();
+
+    if (!data || data.length === 0) {
+      showResult('invalid', null, 'Ticket not found in system');
+      addRecent(ticketNum, 'invalid', 'Not found');
+      updateStats('invalid');
+      return;
+    }
+
+    const ticket = data[0];
+    const name = ticket.first_name + ' ' + ticket.last_name;
+
+    if (ticket.checked_in) {
+      // Already scanned
+      const scannedAt = ticket.checked_in_at
+        ? new Date(ticket.checked_in_at).toLocaleTimeString()
+        : 'earlier';
+      showResult('already', ticket, 'Already checked in at ' + scannedAt);
+      addRecent(ticketNum, 'already', name);
+      updateStats('invalid');
+      return;
+    }
+
+    // Valid — mark as checked in
+    await fetch(
+      SUPABASE_URL + '/rest/v1/tickets?ticket_number=eq.' + ticketNum,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          checked_in: true,
+          checked_in_at: new Date().toISOString()
+        })
+      }
+    );
+
+    showResult('valid', ticket, '');
+    addRecent(ticketNum, 'valid', name);
+    updateStats('valid');
+    vibrate();
+
+  } catch (e) {
+    showResult('invalid', null, 'Network error — check connection');
+  }
+}
+
+// ── SHOW RESULT ──
+function showResult(type, ticket, message) {
+  const card = document.getElementById('result-card');
+  const icon = document.getElementById('result-icon');
+  const status = document.getElementById('result-status');
+  const details = document.getElementById('result-details');
+
+  card.className = 'result-card ' + type;
+
+  if (type === 'valid') {
+    icon.textContent = '✅';
+    status.textContent = 'Valid Ticket — Let Them In';
+    details.innerHTML = `
+      <div class="result-row"><span class="result-key">Name</span><span class="result-val">${ticket.first_name} ${ticket.last_name}</span></div>
+      <div class="result-row"><span class="result-key">Ticket Type</span><span class="result-val">${ticket.ticket_type}</span></div>
+      <div class="result-row"><span class="result-key">Ticket #</span><span class="result-val">${ticket.ticket_number}</span></div>
+      <div class="result-row"><span class="result-key">Show</span><span class="result-val">${ticket.show_name}</span></div>
+    `;
+  } else if (type === 'already') {
+    icon.textContent = '🟡';
+    status.textContent = 'Already Checked In';
+    details.innerHTML = `
+      <div class="result-row"><span class="result-key">Name</span><span class="result-val">${ticket.first_name} ${ticket.last_name}</span></div>
+      <div class="result-row"><span class="result-key">Ticket Type</span><span class="result-val">${ticket.ticket_type}</span></div>
+      <div class="result-row"><span class="result-key">Status</span><span class="result-val" style="color:#EF9F27;">${message}</span></div>
+    `;
+  } else {
+    icon.textContent = '❌';
+    status.textContent = 'Invalid Ticket';
+    details.innerHTML = `<div class="result-row"><span class="result-key">Reason</span><span class="result-val" style="color:#E31837;">${message}</span></div>`;
+  }
+
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Auto-clear after 5 seconds
+  setTimeout(() => { card.className = 'result-card'; }, 5000);
+}
+
+// ── MANUAL LOOKUP ──
+async function manualLookup() {
+  const input = document.getElementById('manual-input');
+  const raw = input.value.trim().toUpperCase();
+  if (!raw) return;
+  const ticketNum = raw.startsWith('CTX-') ? raw : 'CTX-' + raw;
+  await checkTicket(ticketNum);
+  input.value = '';
+}
+
+document.getElementById('manual-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') manualLookup();
+});
+
+// ── STATS ──
+function updateStats(type) {
+  stats.total++;
+  if (type === 'valid') stats.valid++;
+  else stats.invalid++;
+  document.getElementById('stat-total').textContent = stats.total;
+  document.getElementById('stat-checked').textContent = stats.valid;
+  document.getElementById('stat-invalid').textContent = stats.invalid;
+}
+
+// ── RECENT SCANS ──
+function addRecent(ticketNum, type, name) {
+  recentScans.unshift({ ticketNum, type, name, time: new Date().toLocaleTimeString() });
+  if (recentScans.length > 20) recentScans.pop();
+  renderRecent();
+}
+
+function renderRecent() {
+  const list = document.getElementById('recent-list');
+  if (recentScans.length === 0) {
+    list.innerHTML = '<div class="recent-empty">No scans yet</div>';
+    return;
+  }
+  list.innerHTML = recentScans.map(s => `
+    <div class="recent-item">
+      <div>
+        <div class="recent-name">${s.name}</div>
+        <div class="recent-ticket">${s.ticketNum || 'Unknown'} · ${s.time}</div>
+      </div>
+      <div class="recent-badge ${s.type}">${s.type === 'valid' ? '✓ Valid' : s.type === 'already' ? '⚠ Duplicate' : '✕ Invalid'}</div>
+    </div>
+  `).join('');
+}
+
+// ── HAPTIC FEEDBACK ──
+function vibrate() {
+  if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+}
+</script>
+</body>
+</html>
