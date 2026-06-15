@@ -667,6 +667,31 @@ async function saveTicketToSupabase(data) {
   }
 }
 
+// ── CONFIRMATION EMAIL ──
+// Calls Supabase Edge Function which sends branded email via Resend
+// Buyer receives ticket + QR code in their inbox instantly after purchase
+async function sendConfirmationEmail(data) {
+  try {
+    const res = await fetch('https://ocupmoghnqascnxjfsez.supabase.co/functions/v1/send-ticket-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (result.success) {
+      console.log('Confirmation email sent:', result.id);
+    } else {
+      console.warn('Email send failed:', result);
+    }
+  } catch(e) {
+    console.warn('Email error:', e);
+  }
+}
+
 let selectedTier='GA', selectedPrice=5, promoDiscount=0, promoApplied=false;
 let squareCard=null, payments=null;
 
@@ -858,6 +883,17 @@ function setLoading(on){
     amount_paid: totalPaid,
     referral_code: refCode,
     sms_opt_in: smsOpt
+  });
+
+  // ── Fire confirmation email ──
+  sendConfirmationEmail({
+    first_name: sanitize(fname),
+    last_name: sanitize(lname),
+    email: email,
+    ticket_number: ticketNum,
+    ticket_type: selectedTier,
+    amount_paid: totalPaid,
+    qr_data: 'CTXCS-'+ticketNum+'-'+fname.toUpperCase()
   });
 
   document.getElementById('ticketFormInner').classList.add('hidden');
