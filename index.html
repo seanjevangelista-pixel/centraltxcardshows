@@ -403,7 +403,7 @@ footer{background:#0a0a0a;border-top:1px solid rgba(255,255,255,0.04);padding:44
     </div>
     <div style="text-align:center;">
       <div style="font-size:13px;color:rgba(255,255,255,0.2);margin-bottom:16px;">Interested in sponsoring Central TX Card Shows?</div>
-      <a href="mailto:slabpackz@gmail.com?subject=Sponsorship%20Inquiry%20—%20Central%20TX%20Card%20Shows" class="btn btn-ghost" style="font-size:12px;padding:10px 26px;">Get in Touch →</a>
+      <a href="mailto:slabpackz@gmail.com?subject=Sponsorship+Inquiry+Central+TX+Card+Shows" class="btn btn-ghost" style="font-size:12px;padding:10px 26px;">Get in Touch →</a>
     </div>
   </div>
 </section>
@@ -830,12 +830,47 @@ function setLoading(on){
   });
 }
 
-function captureEmail(){
-  const email=document.getElementById('email-capture').value.trim();
-  if(!email||!email.includes('@'))return;
-  document.getElementById('email-success').style.display='block';
-  document.getElementById('email-capture').value='';
-}
+// ── EMAIL CAPTURE ──
+  // Saves email signups to Supabase for Show #2 marketing
+  async function captureEmail(){
+    const emailInput = document.getElementById('email-capture');
+    const successEl = document.getElementById('email-success');
+    const btn = document.querySelector('#stay-updated button');
+    const email = emailInput.value.trim();
+    
+    if(!email || !email.includes('@')) {
+      emailInput.style.borderColor = '#E31837';
+      setTimeout(() => emailInput.style.borderColor = '', 1500);
+      return;
+    }
+
+    // Disable button while saving
+    if(btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+    try {
+      await fetch(SUPABASE_URL + '/rest/v1/email_signups', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          email: email,
+          source: 'website_signup',
+          created_at: new Date().toISOString()
+        })
+      });
+    } catch(e) {
+      console.warn('Email signup save failed:', e);
+    }
+
+    // Show success regardless
+    successEl.style.display = 'block';
+    emailInput.value = '';
+    if(btn) { btn.disabled = false; btn.textContent = 'Notify Me'; }
+  }
 </script>
 </body>
 </html>
