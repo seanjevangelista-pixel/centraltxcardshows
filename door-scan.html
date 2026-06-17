@@ -12,7 +12,7 @@
   .header {
     background: #111;
     border-bottom: 1px solid rgba(255,255,255,0.06);
-    padding: 16px 20px;
+    padding: 12px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -20,9 +20,11 @@
     top: 0;
     z-index: 10;
   }
-  .header-logo { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #fff; }
-  .header-logo span { color: #E31837; }
-  .header-badge { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; background: rgba(227,24,55,0.15); color: #E31837; border: 1px solid rgba(227,24,55,0.3); padding: 4px 10px; border-radius: 4px; }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .header-logo-img { height: 34px; width: auto; object-fit: contain; display: block; }
+  .header-logo-text { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.5); line-height: 1.4; }
+  .header-logo-text span { color: #E31837; }
+  .header-badge { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; background: rgba(227,24,55,0.15); color: #E31837; border: 1px solid rgba(227,24,55,0.3); padding: 4px 10px; border-radius: 4px; white-space: nowrap; }
 
   .stats-bar {
     display: grid;
@@ -98,7 +100,6 @@
   .start-btn:active { background: #B5122B; }
   .start-btn.stop { background: #222; border: 1px solid rgba(255,255,255,0.1); }
 
-  /* RESULT CARD */
   .result-card {
     border-radius: 12px;
     padding: 24px;
@@ -108,51 +109,21 @@
   }
   @keyframes slideUp { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
 
-  .result-card.valid {
-    background: rgba(74,222,128,0.06);
-    border: 1px solid rgba(74,222,128,0.25);
-    display: block;
-  }
-  .result-card.invalid {
-    background: rgba(227,24,55,0.06);
-    border: 1px solid rgba(227,24,55,0.25);
-    display: block;
-  }
-  .result-card.already {
-    background: rgba(239,159,39,0.06);
-    border: 1px solid rgba(239,159,39,0.25);
-    display: block;
-  }
+  .result-card.valid   { background: rgba(74,222,128,0.06);  border: 1px solid rgba(74,222,128,0.25);  display: block; }
+  .result-card.invalid { background: rgba(227,24,55,0.06);   border: 1px solid rgba(227,24,55,0.25);   display: block; }
+  .result-card.already { background: rgba(239,159,39,0.06);  border: 1px solid rgba(239,159,39,0.25);  display: block; }
 
-  .result-icon {
-    font-size: 48px;
-    text-align: center;
-    margin-bottom: 12px;
-    line-height: 1;
-  }
-  .result-status {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-align: center;
-    margin-bottom: 16px;
-  }
-  .result-card.valid .result-status { color: #4ade80; }
+  .result-icon { font-size: 48px; text-align: center; margin-bottom: 12px; line-height: 1; }
+  .result-status { font-size: 22px; font-weight: 700; letter-spacing: 0.04em; text-align: center; margin-bottom: 16px; }
+  .result-card.valid   .result-status { color: #4ade80; }
   .result-card.invalid .result-status { color: #E31837; }
   .result-card.already .result-status { color: #EF9F27; }
 
-  .result-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    font-size: 13px;
-  }
+  .result-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
   .result-row:last-child { border-bottom: none; }
   .result-key { color: rgba(255,255,255,0.4); }
   .result-val { color: #fff; font-weight: 500; text-align: right; }
 
-  /* MANUAL LOOKUP */
   .manual-section {
     background: #111;
     border: 1px solid rgba(255,255,255,0.06);
@@ -160,14 +131,7 @@
     padding: 16px;
     margin-bottom: 16px;
   }
-  .manual-title {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.35);
-    margin-bottom: 12px;
-  }
+  .manual-title { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 12px; }
   .manual-row { display: flex; gap: 8px; }
   .manual-input {
     flex: 1;
@@ -198,79 +162,110 @@
   }
   .manual-btn:active { background: #333; }
 
-  /* RECENT SCANS */
-  .recent-section {
-    background: #111;
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 12px;
-    overflow: hidden;
-  }
-  .recent-title {
-    padding: 14px 16px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.35);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-  }
-  .recent-empty {
-    padding: 24px 16px;
-    font-size: 13px;
-    color: rgba(255,255,255,0.2);
-    text-align: center;
-  }
-  .recent-item {
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
+  .recent-section { background: #111; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; overflow: hidden; }
+  .recent-title { padding: 14px 16px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.35); border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .recent-empty { padding: 24px 16px; font-size: 13px; color: rgba(255,255,255,0.2); text-align: center; }
+  .recent-item { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .recent-item:last-child { border-bottom: none; }
   .recent-name { font-size: 13px; font-weight: 500; color: #fff; }
   .recent-ticket { font-size: 11px; color: rgba(255,255,255,0.3); font-family: monospace; margin-top: 2px; }
-  .recent-badge {
-    font-size: 10px;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 4px;
-    white-space: nowrap;
-    flex-shrink: 0;
+  .recent-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; }
+  .recent-badge.valid   { background: rgba(74,222,128,0.1);  color: #4ade80; }
+  .recent-badge.invalid { background: rgba(227,24,55,0.1);   color: #E31837; }
+  .recent-badge.already { background: rgba(239,159,39,0.1);  color: #EF9F27; }
+
+  /* ── INVALID OVERLAY ── */
+  .invalid-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(0,0,0,0.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
   }
-  .recent-badge.valid { background: rgba(74,222,128,0.1); color: #4ade80; }
-  .recent-badge.invalid { background: rgba(227,24,55,0.1); color: #E31837; }
-  .recent-badge.already { background: rgba(239,159,39,0.1); color: #EF9F27; }
+  .invalid-overlay.show { display: flex; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from{opacity:0}to{opacity:1} }
+
+  .invalid-modal {
+    background: #111;
+    border: 2px solid #E31837;
+    border-radius: 16px;
+    padding: 36px 28px;
+    max-width: 340px;
+    width: 100%;
+    text-align: center;
+    animation: popIn 0.25s cubic-bezier(0.175,0.885,0.32,1.275);
+  }
+  @keyframes popIn { from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:scale(1)} }
+
+  .invalid-x {
+    width: 72px;
+    height: 72px;
+    background: rgba(227,24,55,0.1);
+    border: 2px solid rgba(227,24,55,0.35);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 36px;
+    line-height: 1;
+    color: #E31837;
+  }
+  .invalid-title { font-size: 28px; font-weight: 900; letter-spacing: 0.02em; color: #E31837; margin-bottom: 8px; }
+  .invalid-sub { font-size: 14px; color: rgba(255,255,255,0.45); line-height: 1.6; margin-bottom: 20px; }
+  .invalid-reason {
+    background: rgba(227,24,55,0.07);
+    border: 1px solid rgba(227,24,55,0.18);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: #E31837;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .invalid-dismiss {
+    width: 100%;
+    padding: 16px;
+    background: #E31837;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .invalid-dismiss:active { background: #B5122B; }
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
+<!-- HEADER — logo + text left, badge right -->
 <div class="header">
-  <div class="header-logo">CENTRAL <span>TX</span> CARD SHOWS</div>
+  <div class="header-left">
+    <img class="header-logo-img" src="data:image/jpeg;base64,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" alt="CTX Card Shows" />
+    <div class="header-logo-text">Central <span>TX</span><br>Card Shows</div>
+  </div>
   <div class="header-badge">Door Scanner</div>
 </div>
 
 <!-- STATS -->
 <div class="stats-bar">
-  <div class="stat">
-    <div class="stat-num" id="stat-total">0</div>
-    <div class="stat-label">Scanned</div>
-  </div>
-  <div class="stat">
-    <div class="stat-num" id="stat-checked">0</div>
-    <div class="stat-label">Valid</div>
-  </div>
-  <div class="stat">
-    <div class="stat-num" id="stat-invalid">0</div>
-    <div class="stat-label">Rejected</div>
-  </div>
+  <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Scanned</div></div>
+  <div class="stat"><div class="stat-num" id="stat-checked">0</div><div class="stat-label">Valid</div></div>
+  <div class="stat"><div class="stat-num" id="stat-invalid">0</div><div class="stat-label">Rejected</div></div>
 </div>
 
 <!-- SCANNER -->
 <div class="scanner-section">
-
   <div class="scanner-box">
     <div class="scanner-label">
       <span>QR Scanner</span>
@@ -282,18 +277,14 @@
     <div id="reader"></div>
   </div>
 
-  <button class="start-btn" id="scan-btn" onclick="toggleScanner()">
-    Start Scanner
-  </button>
+  <button class="start-btn" id="scan-btn" onclick="toggleScanner()">Start Scanner</button>
 
-  <!-- RESULT -->
   <div class="result-card" id="result-card">
     <div class="result-icon" id="result-icon"></div>
     <div class="result-status" id="result-status"></div>
     <div id="result-details"></div>
   </div>
 
-  <!-- MANUAL LOOKUP -->
   <div class="manual-section">
     <div class="manual-title">Manual Ticket Lookup</div>
     <div class="manual-row">
@@ -302,20 +293,27 @@
     </div>
   </div>
 
-  <!-- RECENT SCANS -->
   <div class="recent-section">
     <div class="recent-title">Recent Scans</div>
     <div id="recent-list"><div class="recent-empty">No scans yet — start scanning to see results here</div></div>
   </div>
+</div>
 
+<!-- INVALID TICKET OVERLAY -->
+<div class="invalid-overlay" id="invalidOverlay" onclick="dismissInvalid()">
+  <div class="invalid-modal" onclick="event.stopPropagation()">
+    <div class="invalid-x">✕</div>
+    <div class="invalid-title">INVALID TICKET</div>
+    <div class="invalid-sub" id="invalid-sub-text">This ticket could not be verified.</div>
+    <div class="invalid-reason" id="invalid-reason-text">Not found in system</div>
+    <button class="invalid-dismiss" onclick="dismissInvalid()">Dismiss</button>
+  </div>
 </div>
 
 <script>
-// ── CONFIG ──
 const SUPABASE_URL = 'https://ocupmoghnqascnxjfsez.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_lJkcZ4H66DZw8WDxteq5rA_y7SQtusH';
 
-// ── STATE ──
 let scanner = null;
 let scanning = false;
 let stats = { total: 0, valid: 0, invalid: 0 };
@@ -323,7 +321,6 @@ let recentScans = [];
 let lastScanned = '';
 let scanCooldown = false;
 
-// ── SCANNER TOGGLE ──
 function toggleScanner() {
   if (!scanning) startScanner();
   else stopScanner();
@@ -337,7 +334,15 @@ function startScanner() {
   scanner = new Html5Qrcode('reader');
   scanner.start(
     { facingMode: 'environment' },
-    { fps: 10, qrbox: { width: 250, height: 250 } },
+    {
+      fps: 10,
+      // Dynamic qrbox — 80% of the smaller viewport dimension for a bigger scan area
+      qrbox: function(viewfinderWidth, viewfinderHeight) {
+        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+        const size = Math.floor(minEdge * 0.8);
+        return { width: size, height: size };
+      }
+    },
     onScanSuccess,
     () => {}
   ).then(() => {
@@ -364,29 +369,26 @@ function stopScanner() {
   }
 }
 
-// ── ON QR SCAN ──
 async function onScanSuccess(decodedText) {
   if (scanCooldown || decodedText === lastScanned) return;
   lastScanned = decodedText;
   scanCooldown = true;
   setTimeout(() => { scanCooldown = false; lastScanned = ''; }, 3000);
 
-  // Extract ticket number from QR string: CTXCS-CTX-XXXXXX-NAME
   const parts = decodedText.split('-');
   if (!decodedText.startsWith('CTXCS-') || parts.length < 3) {
     showResult('invalid', null, 'Invalid QR code — not a valid ticket');
+    showInvalidOverlay('Not a Central TX Card Shows ticket.', 'Invalid QR Format');
     addRecent(null, 'invalid', 'Unknown QR');
     return;
   }
 
-  const ticketNum = parts[1] + '-' + parts[2]; // e.g. CTX-R7KW2Q
+  const ticketNum = parts[1] + '-' + parts[2];
   await checkTicket(ticketNum);
 }
 
-// ── CHECK TICKET IN SUPABASE ──
 async function checkTicket(ticketNum) {
   try {
-    // Look up ticket
     const res = await fetch(
       SUPABASE_URL + '/rest/v1/tickets?ticket_number=eq.' + ticketNum + '&select=*',
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
@@ -395,6 +397,7 @@ async function checkTicket(ticketNum) {
 
     if (!data || data.length === 0) {
       showResult('invalid', null, 'Ticket not found in system');
+      showInvalidOverlay('This ticket number does not exist in our system.', 'Ticket Not Found');
       addRecent(ticketNum, 'invalid', 'Not found');
       updateStats('invalid');
       return;
@@ -404,17 +407,16 @@ async function checkTicket(ticketNum) {
     const name = ticket.first_name + ' ' + ticket.last_name;
 
     if (ticket.checked_in) {
-      // Already scanned
       const scannedAt = ticket.checked_in_at
         ? new Date(ticket.checked_in_at).toLocaleTimeString()
         : 'earlier';
       showResult('already', ticket, 'Already checked in at ' + scannedAt);
+      showInvalidOverlay('Ticket was already scanned at ' + scannedAt + '.', 'Already Checked In');
       addRecent(ticketNum, 'already', name);
       updateStats('invalid');
       return;
     }
 
-    // Valid — mark as checked in
     await fetch(
       SUPABASE_URL + '/rest/v1/tickets?ticket_number=eq.' + ticketNum,
       {
@@ -425,10 +427,7 @@ async function checkTicket(ticketNum) {
           'Content-Type': 'application/json',
           'Prefer': 'return=minimal'
         },
-        body: JSON.stringify({
-          checked_in: true,
-          checked_in_at: new Date().toISOString()
-        })
+        body: JSON.stringify({ checked_in: true, checked_in_at: new Date().toISOString() })
       }
     );
 
@@ -439,10 +438,10 @@ async function checkTicket(ticketNum) {
 
   } catch (e) {
     showResult('invalid', null, 'Network error — check connection');
+    showInvalidOverlay('Could not reach the server. Check your connection.', 'Network Error');
   }
 }
 
-// ── SHOW RESULT ──
 function showResult(type, ticket, message) {
   const card = document.getElementById('result-card');
   const icon = document.getElementById('result-icon');
@@ -475,12 +474,20 @@ function showResult(type, ticket, message) {
   }
 
   card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-  // Auto-clear after 5 seconds
   setTimeout(() => { card.className = 'result-card'; }, 5000);
 }
 
-// ── MANUAL LOOKUP ──
+function showInvalidOverlay(subText, reason) {
+  document.getElementById('invalid-sub-text').textContent = subText;
+  document.getElementById('invalid-reason-text').textContent = reason;
+  document.getElementById('invalidOverlay').classList.add('show');
+  setTimeout(dismissInvalid, 4000);
+}
+
+function dismissInvalid() {
+  document.getElementById('invalidOverlay').classList.remove('show');
+}
+
 async function manualLookup() {
   const input = document.getElementById('manual-input');
   const raw = input.value.trim().toUpperCase();
@@ -494,7 +501,6 @@ document.getElementById('manual-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') manualLookup();
 });
 
-// ── STATS ──
 function updateStats(type) {
   stats.total++;
   if (type === 'valid') stats.valid++;
@@ -504,7 +510,6 @@ function updateStats(type) {
   document.getElementById('stat-invalid').textContent = stats.invalid;
 }
 
-// ── RECENT SCANS ──
 function addRecent(ticketNum, type, name) {
   recentScans.unshift({ ticketNum, type, name, time: new Date().toLocaleTimeString() });
   if (recentScans.length > 20) recentScans.pop();
@@ -528,7 +533,6 @@ function renderRecent() {
   `).join('');
 }
 
-// ── HAPTIC FEEDBACK ──
 function vibrate() {
   if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
 }
