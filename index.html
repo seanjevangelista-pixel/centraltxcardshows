@@ -573,9 +573,10 @@ footer{background:#0a0a0a;border-top:1px solid rgba(255,255,255,0.04);padding:44
       <div class="snote">Secured by Square · Card info never stored on this site</div>
     </div>
     <div class="conf" id="confirmationView">
-      <div class="cico">✓</div>
+      <div class="cico" id="conf-icon">✓</div>
       <div class="ctit">YOU'RE <span>IN!</span></div>
       <p class="csub">Show this ticket at the door.</p>
+      <div id="email-status" style="display:none;font-size:11px;padding:10px 14px;border-radius:6px;margin-bottom:16px;font-family:'DM Mono',monospace;"></div>
       <div class="tcard">
         <div class="tnum" id="conf-ticket-num">TICKET #CTX-000000</div>
         <div class="tnamedis" id="conf-name">Sean Evangelista</div>
@@ -644,6 +645,7 @@ async function saveTicketToSupabase(data) {
 // Calls Supabase Edge Function which sends branded email via Resend
 // Buyer receives ticket + QR code in their inbox instantly after purchase
 async function sendConfirmationEmail(data) {
+  const statusEl = document.getElementById('email-status');
   try {
     const res = await fetch('https://ocupmoghnqascnxjfsez.supabase.co/functions/v1/send-ticket-email', {
       method: 'POST',
@@ -657,11 +659,32 @@ async function sendConfirmationEmail(data) {
     const result = await res.json();
     if (result.success) {
       console.log('Confirmation email sent:', result.id);
+      if(statusEl){
+        statusEl.style.display='block';
+        statusEl.style.background='rgba(74,222,128,0.07)';
+        statusEl.style.border='1px solid rgba(74,222,128,0.2)';
+        statusEl.style.color='#4ade80';
+        statusEl.textContent='✓ Confirmation email sent to ' + data.email;
+      }
     } else {
       console.warn('Email send failed:', result);
+      if(statusEl){
+        statusEl.style.display='block';
+        statusEl.style.background='rgba(248,113,113,0.06)';
+        statusEl.style.border='1px solid rgba(248,113,113,0.18)';
+        statusEl.style.color='#f87171';
+        statusEl.textContent='⚠ Email delivery failed — screenshot your ticket. Questions? slabpackz@gmail.com';
+      }
     }
   } catch(e) {
     console.warn('Email error:', e);
+    if(statusEl){
+      statusEl.style.display='block';
+      statusEl.style.background='rgba(248,113,113,0.06)';
+      statusEl.style.border='1px solid rgba(248,113,113,0.18)';
+      statusEl.style.color='#f87171';
+      statusEl.textContent='⚠ Email delivery failed — screenshot your ticket. Questions? slabpackz@gmail.com';
+    }
   }
 }
 
