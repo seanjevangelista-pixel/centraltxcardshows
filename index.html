@@ -77,10 +77,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;height:64px;display:flex;ali
 .stitle{font-family:'Bebas Neue',sans-serif;font-size:clamp(48px,7.5vw,92px);line-height:0.9;color:#fff;margin-bottom:48px;letter-spacing:0.01em;}
 
 /* ── SHOWS ── */
-.shows-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:1px;background:rgba(255,255,255,0.04);border-radius:6px;overflow:hidden;}
-.card{background:#0e0e0e;padding:44px;position:relative;cursor:pointer;transition:background 0.3s ease,border-color 0.3s ease,transform 0.3s ease;border:1px solid rgba(255,255,255,0.06);}
-.card.feat{border-left:4px solid #E31837;}
-.card:hover{background:#141414;border-color:rgba(255,255,255,0.12);transform:translateY(-2px);}
+.shows-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:20px;border-radius:8px;}
+.card{padding:44px;position:relative;cursor:pointer;transition:transform 0.35s cubic-bezier(0.4,0,0.2,1),box-shadow 0.35s cubic-bezier(0.4,0,0.2,1),border-color 0.35s ease;border:1px solid rgba(255,255,255,0.08);border-radius:8px;overflow:hidden;}
+.card::before{content:'';position:absolute;inset:0;opacity:1;transition:opacity 0.35s ease;z-index:0;pointer-events:none;}
+.card>*{position:relative;z-index:1;}
+.card.feat{border-color:rgba(227,24,55,0.35);background:#0e0e0e;}
+.card.feat::before{background:radial-gradient(ellipse 90% 70% at 20% 10%,rgba(227,24,55,0.18) 0%,rgba(180,10,40,0.08) 40%,transparent 70%),linear-gradient(135deg,rgba(227,24,55,0.06) 0%,rgba(30,10,15,0.95) 60%,#0e0e0e 100%);}
+.card:not(.feat){border-color:rgba(255,255,255,0.07);background:#0e0e0e;}
+.card:not(.feat)::before{background:radial-gradient(ellipse 80% 60% at 80% 10%,rgba(74,159,213,0.1) 0%,rgba(30,50,80,0.06) 40%,transparent 70%),linear-gradient(135deg,rgba(20,30,50,0.9) 0%,#0e0e0e 60%);}
+.card:hover{transform:translateY(-6px);box-shadow:0 24px 60px rgba(0,0,0,0.5);}
+.card.feat:hover{box-shadow:0 24px 60px rgba(227,24,55,0.15),0 0 0 1px rgba(227,24,55,0.25);}
+.card:not(.feat):hover{box-shadow:0 24px 60px rgba(74,159,213,0.1),0 0 0 1px rgba(74,159,213,0.15);}
 .cbadge{display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;padding:5px 12px;border-radius:2px;margin-bottom:18px;}
 .cbadge.live{background:rgba(227,24,55,0.1);color:#E31837;border:1px solid rgba(227,24,55,0.22);}
 .cbadge.live::before{content:'';width:5px;height:5px;border-radius:50%;background:#E31837;animation:pulse 1.5s infinite;}
