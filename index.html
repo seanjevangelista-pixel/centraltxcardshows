@@ -702,8 +702,8 @@ function closeTickets(){
 }
 
 function selectTier(el,name,price){
-  document.querySelectorAll('.ticket-tier').forEach(t=>t.classList.remove('selected'));
-  el.classList.add('selected');
+  document.querySelectorAll('.tier').forEach(t=>t.classList.remove('sel'));
+  el.classList.add('sel');
   selectedTier=name; selectedPrice=price;
   updateSummary();
 }
