@@ -665,7 +665,7 @@ async function sendConfirmationEmail(data) {
   }
 }
 
-let selectedTier='GA', selectedPrice=5, promoDiscount=0, promoApplied=false;
+let selectedTier='GA - 1 Day', selectedPrice=5, promoDiscount=0, promoApplied=false;
 let squareCard=null, payments=null;
 
 async function initSquare(){
@@ -699,6 +699,18 @@ function closeTickets(){
   document.getElementById('ticketFormInner').classList.remove('hidden');
   document.getElementById('confirmationView').classList.remove('active');
   document.getElementById('square-error').style.display='none';
+  // Reset tier selection
+  selectedTier='GA - 1 Day'; selectedPrice=5; promoDiscount=0; promoApplied=false;
+  document.querySelectorAll('.tier').forEach(t=>t.classList.remove('sel'));
+  document.querySelector('.tier').classList.add('sel');
+  document.getElementById('promoInput').value='';
+  document.getElementById('promoSuccess').style.display='none';
+  document.getElementById('summary-discount').style.display='none';
+  document.getElementById('fname').value='';
+  document.getElementById('lname').value='';
+  document.getElementById('email').value='';
+  document.getElementById('phone').value='';
+  updateSummary();
 }
 
 function selectTier(el,name,price){
@@ -765,6 +777,10 @@ function setLoading(on){
   const phone=document.getElementById('phone').value.trim();
   document.getElementById('square-error').style.display='none';
   if(!fname||!lname||!email||!phone){showError('Please fill in all fields.');return;}
+  const digits=phone.replace(/\D/g,'');
+  if(digits.length<10){showError('Please enter a valid 10-digit phone number.');return;}
+  const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if(!emailRe.test(email)){showError('Please enter a valid email address.');return;}
   if(!squareCard){showError('Payment form loading — please wait a moment.');return;}
   setLoading(true);
   try{
