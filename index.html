@@ -937,7 +937,8 @@ function setLoading(on){
   function copyRef(){
   const link=document.getElementById('ref-link-display').textContent;
   navigator.clipboard.writeText('https://'+link).then(()=>{
-    const btn=document.querySelector('.btn-copy');
+    const btn=document.querySelector('.copybtn');
+    if(!btn)return;
     btn.textContent='Copied!';
     setTimeout(()=>btn.textContent='Copy',2000);
   });
