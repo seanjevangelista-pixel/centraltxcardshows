@@ -761,7 +761,7 @@ function applyPromo(){
     updateSummary();
   }else if(!PROMO_CODES[code]){
     const inp=document.getElementById('promoInput');
-    inp.style.borderColor='var(--red)';
+    inp.style.borderColor='#E31837';
     setTimeout(()=>inp.style.borderColor='',1500);
   }
 }
