@@ -303,7 +303,7 @@
 <div class="invalid-overlay" id="invalidOverlay" onclick="dismissInvalid()">
   <div class="invalid-modal" onclick="event.stopPropagation()">
     <div class="invalid-x">✕</div>
-    <div class="invalid-title">INVALID TICKET</div>
+    <div class="invalid-title" id="invalid-title-text">INVALID TICKET</div>
     <div class="invalid-sub" id="invalid-sub-text">This ticket could not be verified.</div>
     <div class="invalid-reason" id="invalid-reason-text">Not found in system</div>
     <button class="invalid-dismiss" onclick="dismissInvalid()">Dismiss</button>
@@ -411,7 +411,7 @@ async function checkTicket(ticketNum) {
         ? new Date(ticket.checked_in_at).toLocaleTimeString()
         : 'earlier';
       showResult('already', ticket, 'Already checked in at ' + scannedAt);
-      showInvalidOverlay('Ticket was already scanned at ' + scannedAt + '.', 'Already Checked In');
+      showInvalidOverlay('Ticket was already scanned at ' + scannedAt + '.', 'Already Checked In', 'ALREADY CHECKED IN');
       addRecent(ticketNum, 'already', name);
       updateStats('invalid');
       return;
@@ -477,7 +477,8 @@ function showResult(type, ticket, message) {
   setTimeout(() => { card.className = 'result-card'; }, 5000);
 }
 
-function showInvalidOverlay(subText, reason) {
+function showInvalidOverlay(subText, reason, title) {
+  document.getElementById('invalid-title-text').textContent = title || 'INVALID TICKET';
   document.getElementById('invalid-sub-text').textContent = subText;
   document.getElementById('invalid-reason-text').textContent = reason;
   document.getElementById('invalidOverlay').classList.add('show');
