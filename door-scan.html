@@ -320,6 +320,8 @@ let stats = { total: 0, valid: 0, invalid: 0 };
 let recentScans = [];
 let lastScanned = '';
 let scanCooldown = false;
+let resultHideTimeout = null;
+let overlayHideTimeout = null;
 
 function toggleScanner() {
   if (!scanning) startScanner();
@@ -395,7 +397,7 @@ async function checkTicket(ticketNum) {
     );
     const data = await res.json();
 
-    if (!data || data.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
       showResult('invalid', null, 'Ticket not found in system');
       showInvalidOverlay('This ticket number does not exist in our system.', 'Ticket Not Found');
       addRecent(ticketNum, 'invalid', 'Not found');
@@ -474,7 +476,8 @@ function showResult(type, ticket, message) {
   }
 
   card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  setTimeout(() => { card.className = 'result-card'; }, 5000);
+  clearTimeout(resultHideTimeout);
+  resultHideTimeout = setTimeout(() => { card.className = 'result-card'; }, 5000);
 }
 
 function showInvalidOverlay(subText, reason, title) {
@@ -482,7 +485,8 @@ function showInvalidOverlay(subText, reason, title) {
   document.getElementById('invalid-sub-text').textContent = subText;
   document.getElementById('invalid-reason-text').textContent = reason;
   document.getElementById('invalidOverlay').classList.add('show');
-  setTimeout(dismissInvalid, 4000);
+  clearTimeout(overlayHideTimeout);
+  overlayHideTimeout = setTimeout(dismissInvalid, 4000);
 }
 
 function dismissInvalid() {
