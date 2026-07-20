@@ -436,6 +436,8 @@ async function checkTicket(ticketNum) {
     if (!patchRes.ok) {
       showResult('invalid', null, 'Check-in failed — scan again');
       showInvalidOverlay('Could not save check-in status. Please scan again.', 'Check-In Failed');
+      addRecent(ticketNum, 'invalid', name);
+      updateStats('invalid');
       return;
     }
 
