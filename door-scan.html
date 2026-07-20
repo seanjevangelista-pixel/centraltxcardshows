@@ -382,6 +382,7 @@ async function onScanSuccess(decodedText) {
     showResult('invalid', null, 'Invalid QR code — not a valid ticket');
     showInvalidOverlay('Not a Central TX Card Shows ticket.', 'Invalid QR Format');
     addRecent(null, 'invalid', 'Unknown QR');
+    updateStats('invalid');
     return;
   }
 
@@ -419,15 +420,20 @@ async function checkTicket(ticketNum) {
       return;
     }
 
+    // Conditional PATCH — only flips checked_in if it's still false. This closes the
+    // race where two scanners (or a double-tap on manual lookup) both read
+    // checked_in:false before either write lands, which would otherwise let the
+    // same ticket admit two people. Prefer: return=representation lets us see
+    // whether our write actually matched a row.
     const patchRes = await fetch(
-      SUPABASE_URL + '/rest/v1/tickets?ticket_number=eq.' + ticketNum,
+      SUPABASE_URL + '/rest/v1/tickets?ticket_number=eq.' + ticketNum + '&checked_in=eq.false',
       {
         method: 'PATCH',
         headers: {
           'apikey': SUPABASE_KEY,
           'Authorization': 'Bearer ' + SUPABASE_KEY,
           'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
+          'Prefer': 'return=representation'
         },
         body: JSON.stringify({ checked_in: true, checked_in_at: new Date().toISOString() })
       }
@@ -441,6 +447,18 @@ async function checkTicket(ticketNum) {
       return;
     }
 
+    const patched = await patchRes.json();
+    if (!Array.isArray(patched) || patched.length === 0) {
+      // Someone else (another scanner, or a duplicate tap) checked this ticket
+      // in between our lookup and our write. Treat as already-checked-in rather
+      // than silently granting a second entry.
+      showResult('already', ticket, 'Already checked in — just now, another scan');
+      showInvalidOverlay('This ticket was just checked in by another scan.', 'Already Checked In', 'ALREADY CHECKED IN');
+      addRecent(ticketNum, 'already', name);
+      updateStats('invalid');
+      return;
+    }
+
     showResult('valid', ticket, '');
     addRecent(ticketNum, 'valid', name);
     updateStats('valid');
@@ -449,6 +467,8 @@ async function checkTicket(ticketNum) {
   } catch (e) {
     showResult('invalid', null, 'Network error — check connection');
     showInvalidOverlay('Could not reach the server. Check your connection.', 'Network Error');
+    addRecent(ticketNum, 'invalid', 'Network error');
+    updateStats('invalid');
   }
 }
 
