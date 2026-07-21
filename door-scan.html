@@ -316,6 +316,7 @@ const SUPABASE_KEY = 'sb_publishable_lJkcZ4H66DZw8WDxteq5rA_y7SQtusH';
 
 let scanner = null;
 let scanning = false;
+let starting = false;
 let stats = { total: 0, valid: 0, invalid: 0 };
 let recentScans = [];
 let lastScanned = '';
@@ -324,11 +325,14 @@ let resultHideTimeout = null;
 let overlayHideTimeout = null;
 
 function toggleScanner() {
+  if (starting) return;
   if (!scanning) startScanner();
   else stopScanner();
 }
 
 function startScanner() {
+  if (starting || scanning) return;
+  starting = true;
   const btn = document.getElementById('scan-btn');
   const dot = document.getElementById('status-dot');
   const statusText = document.getElementById('status-text');
@@ -348,12 +352,15 @@ function startScanner() {
     onScanSuccess,
     () => {}
   ).then(() => {
+    starting = false;
     scanning = true;
     btn.textContent = 'Stop Scanner';
     btn.classList.add('stop');
     dot.classList.add('active');
     statusText.textContent = 'Scanning...';
   }).catch(err => {
+    starting = false;
+    scanner = null;
     alert('Camera error: ' + err);
   });
 }
@@ -361,14 +368,24 @@ function startScanner() {
 function stopScanner() {
   if (scanner) {
     scanner.stop().then(() => {
-      scanning = false;
-      const btn = document.getElementById('scan-btn');
-      btn.textContent = 'Start Scanner';
-      btn.classList.remove('stop');
-      document.getElementById('status-dot').classList.remove('active');
-      document.getElementById('status-text').textContent = 'Ready';
+      resetScannerUi();
+    }).catch(err => {
+      console.error('Scanner stop failed:', err);
+      resetScannerUi();
     });
+  } else {
+    resetScannerUi();
   }
+}
+
+function resetScannerUi() {
+  scanning = false;
+  scanner = null;
+  const btn = document.getElementById('scan-btn');
+  btn.textContent = 'Start Scanner';
+  btn.classList.remove('stop');
+  document.getElementById('status-dot').classList.remove('active');
+  document.getElementById('status-text').textContent = 'Ready';
 }
 
 async function onScanSuccess(decodedText) {

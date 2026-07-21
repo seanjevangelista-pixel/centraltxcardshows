@@ -722,6 +722,7 @@ function closeTickets(){
   document.getElementById('ticketFormInner').classList.remove('hidden');
   document.getElementById('confirmationView').classList.remove('active');
   document.getElementById('square-error').style.display='none';
+  paymentAttempts=0;
   // Reset tier selection
   selectedTier='GA - 1 Day'; selectedPrice=5; promoDiscount=0; promoApplied=false;
   document.querySelectorAll('.tier').forEach(t=>t.classList.remove('sel'));
@@ -752,14 +753,14 @@ function updateSummary(){
 
 function applyPromo(){
   const code=document.getElementById('promoInput').value.trim().toUpperCase();
-  if(PROMO_CODES[code]&&!promoApplied){
+  if(PROMO_CODES[code]){
     promoApplied=true;
     promoDiscount=PROMO_CODES[code];
     document.getElementById('promoSuccess').style.display='block';
     document.getElementById('summary-discount').style.display='flex';
     document.getElementById('discount-amt').textContent='−$'+promoDiscount+'.00';
     updateSummary();
-  }else if(!PROMO_CODES[code]){
+  }else{
     const inp=document.getElementById('promoInput');
     inp.style.borderColor='#E31837';
     setTimeout(()=>inp.style.borderColor='',1500);
@@ -774,8 +775,8 @@ function genRef(){return 'CTX'+Math.random().toString(36).substr(2,5).toUpperCas
 let paymentAttempts = 0;
 const MAX_ATTEMPTS = 5;
 
-function showError(msg){
-  paymentAttempts++;
+function showError(msg,countAttempt){
+  if(countAttempt!==false) paymentAttempts++;
   const el=document.getElementById('square-error');
   el.textContent = paymentAttempts >= MAX_ATTEMPTS
     ? 'Too many failed attempts. Please refresh the page and try again.'
@@ -799,12 +800,12 @@ function setLoading(on){
   const email=document.getElementById('email').value.trim();
   const phone=document.getElementById('phone').value.trim();
   document.getElementById('square-error').style.display='none';
-  if(!fname||!lname||!email||!phone){showError('Please fill in all fields.');return;}
+  if(!fname||!lname||!email||!phone){showError('Please fill in all fields.',false);return;}
   const digits=phone.replace(/\D/g,'');
-  if(digits.length<10){showError('Please enter a valid 10-digit phone number.');return;}
+  if(digits.length<10){showError('Please enter a valid 10-digit phone number.',false);return;}
   const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if(!emailRe.test(email)){showError('Please enter a valid email address.');return;}
-  if(!squareCard){showError('Payment form loading — please wait a moment.');return;}
+  if(!emailRe.test(email)){showError('Please enter a valid email address.',false);return;}
+  if(!squareCard){showError('Payment form loading — please wait a moment.',false);return;}
   setLoading(true);
   try{
     const result=await squareCard.tokenize();
@@ -940,6 +941,11 @@ function setLoading(on){
     const btn=document.querySelector('.copybtn');
     if(!btn)return;
     btn.textContent='Copied!';
+    setTimeout(()=>btn.textContent='Copy',2000);
+  }).catch(()=>{
+    const btn=document.querySelector('.copybtn');
+    if(!btn)return;
+    btn.textContent='Copy failed';
     setTimeout(()=>btn.textContent='Copy',2000);
   });
 }
