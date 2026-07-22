@@ -337,32 +337,41 @@ function startScanner() {
   const dot = document.getElementById('status-dot');
   const statusText = document.getElementById('status-text');
 
-  scanner = new Html5Qrcode('reader');
-  scanner.start(
-    { facingMode: 'environment' },
-    {
-      fps: 10,
-      // Dynamic qrbox — 80% of the smaller viewport dimension for a bigger scan area
-      qrbox: function(viewfinderWidth, viewfinderHeight) {
-        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-        const size = Math.floor(minEdge * 0.8);
-        return { width: size, height: size };
-      }
-    },
-    onScanSuccess,
-    () => {}
-  ).then(() => {
-    starting = false;
-    scanning = true;
-    btn.textContent = 'Stop Scanner';
-    btn.classList.add('stop');
-    dot.classList.add('active');
-    statusText.textContent = 'Scanning...';
-  }).catch(err => {
+  try {
+    scanner = new Html5Qrcode('reader');
+    scanner.start(
+      { facingMode: 'environment' },
+      {
+        fps: 10,
+        // Dynamic qrbox — 80% of the smaller viewport dimension for a bigger scan area
+        qrbox: function(viewfinderWidth, viewfinderHeight) {
+          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+          const size = Math.floor(minEdge * 0.8);
+          return { width: size, height: size };
+        }
+      },
+      onScanSuccess,
+      () => {}
+    ).then(() => {
+      starting = false;
+      scanning = true;
+      btn.textContent = 'Stop Scanner';
+      btn.classList.add('stop');
+      dot.classList.add('active');
+      statusText.textContent = 'Scanning...';
+    }).catch(err => {
+      starting = false;
+      scanner = null;
+      alert('Camera error: ' + err);
+    });
+  } catch (err) {
+    // Html5Qrcode constructor throws synchronously (e.g. library failed to load
+    // over a bad connection) — without this, `starting` would stay true forever
+    // and the Start Scanner button would be permanently stuck.
     starting = false;
     scanner = null;
-    alert('Camera error: ' + err);
-  });
+    alert('Scanner failed to load — check your connection and refresh.');
+  }
 }
 
 function stopScanner() {
