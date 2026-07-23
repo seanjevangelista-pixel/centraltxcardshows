@@ -735,6 +735,7 @@ function closeTickets(){
   document.getElementById('email').value='';
   document.getElementById('phone').value='';
   updateSummary();
+  setLoading(false);
 }
 
 function selectTier(el,name,price){
@@ -786,8 +787,9 @@ function showError(msg,countAttempt){
 
 function setLoading(on){
   const btn=document.getElementById('pay-btn');
-  btn.textContent=on?'Processing...':'Pay & Get My Ticket';
-  btn.disabled=on; btn.style.opacity=on?'0.6':'1';
+  const lockedOut = paymentAttempts>=MAX_ATTEMPTS;
+  btn.textContent=on?'Processing...':(lockedOut?'Too Many Attempts':'Pay & Get My Ticket');
+  btn.disabled=on||lockedOut; btn.style.opacity=(on||lockedOut)?'0.6':'1';
 }
 
 // ── PAYMENT HANDLER ──
@@ -795,6 +797,7 @@ function setLoading(on){
   // The card number never touches our server — Square tokenizes it client-side
   // Edge Function at: supabase.co/functions/v1/process-payment
   async function handlePayment(){
+  if(paymentAttempts>=MAX_ATTEMPTS){showError('Too many failed attempts. Please refresh the page and try again.',false);return;}
   const fname=document.getElementById('fname').value.trim();
   const lname=document.getElementById('lname').value.trim();
   const email=document.getElementById('email').value.trim();
