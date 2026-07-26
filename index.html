@@ -833,7 +833,7 @@ function setLoading(on){
       });
       const payData=await payRes.json();
       if(payData.payment&&payData.payment.status==='COMPLETED'){
-        confirmTicket(fname,lname);
+        confirmTicket(fname,lname,email,phone);
       }else{
         showError('Payment failed: '+(payData.errors?.[0]?.detail||'Please try again.'));
         setLoading(false);
@@ -852,12 +852,14 @@ function setLoading(on){
   // Called after successful payment
   // Generates unique ticket number, QR code, and referral link
   // Also saves buyer data to Supabase tickets table
-  function confirmTicket(fname,lname){
+  // email/phone are passed in from handlePayment's captured values (not re-read
+  // from the DOM here) because closeTickets() blanks those fields — if the buyer
+  // closes the modal while the payment request is still in flight, a re-read
+  // would save/email the ticket with an empty email and phone number.
+  function confirmTicket(fname,lname,email,phone){
   const ticketNum=genTicket();
   const refCode=genRef();
   const smsOpt=document.getElementById('smsOpt').checked;
-  const email=document.getElementById('email').value.trim();
-  const phone=document.getElementById('phone').value.trim();
   const totalPaid=Math.max(0,selectedPrice-promoDiscount);
 
   document.getElementById('conf-ticket-num').textContent='TICKET #'+ticketNum;
