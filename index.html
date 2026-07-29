@@ -808,6 +808,15 @@ function setLoading(on){
   if(digits.length<10){showError('Please enter a valid 10-digit phone number.',false);return;}
   const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if(!emailRe.test(email)){showError('Please enter a valid email address.',false);return;}
+  // Free order (e.g. a promo code covers the full ticket price, like VIP10 on the
+  // $5 GA tier) — Square rejects $0 charges, so skip tokenization/payment entirely
+  // and issue the ticket directly. Without this, the buyer sees a $0.00 total but
+  // gets a dead-end "Payment failed" and can never complete the order.
+  if(Math.max(0,selectedPrice-promoDiscount)===0){
+    setLoading(true);
+    confirmTicket(fname,lname,email,phone);
+    return;
+  }
   if(!squareCard){showError('Payment form loading — please wait a moment.',false);return;}
   setLoading(true);
   try{
