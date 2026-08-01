@@ -808,13 +808,20 @@ function setLoading(on){
   if(digits.length<10){showError('Please enter a valid 10-digit phone number.',false);return;}
   const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if(!emailRe.test(email)){showError('Please enter a valid email address.',false);return;}
+  // Capture tier/price/discount/opt-in NOW, before any await — closeTickets()
+  // resets these globals (selectedTier→'GA - 1 Day', selectedPrice→5,
+  // promoDiscount→0), so if the buyer closes the modal while the payment request
+  // is still in flight, a later read inside confirmTicket would record and email
+  // the wrong tier and amount (same class of bug as the email/phone capture above).
+  const tier=selectedTier, price=selectedPrice, discount=promoDiscount;
+  const smsOptIn=document.getElementById('smsOpt').checked;
   // Free order (e.g. a promo code covers the full ticket price, like VIP10 on the
   // $5 GA tier) — Square rejects $0 charges, so skip tokenization/payment entirely
   // and issue the ticket directly. Without this, the buyer sees a $0.00 total but
   // gets a dead-end "Payment failed" and can never complete the order.
-  if(Math.max(0,selectedPrice-promoDiscount)===0){
+  if(Math.max(0,price-discount)===0){
     setLoading(true);
-    confirmTicket(fname,lname,email,phone);
+    confirmTicket(fname,lname,email,phone,tier,price,discount,smsOptIn);
     return;
   }
   if(!squareCard){showError('Payment form loading — please wait a moment.',false);return;}
@@ -822,7 +829,7 @@ function setLoading(on){
   try{
     const result=await squareCard.tokenize();
     if(result.status==='OK'){
-      const totalCents=Math.max(0,(selectedPrice-promoDiscount))*100;
+      const totalCents=Math.max(0,(price-discount))*100;
       // ── Payment processed server-side via Supabase Edge Function ──
       // The Square token never touches the browser — only the card nonce does
       const payRes=await fetch('https://ocupmoghnqascnxjfsez.supabase.co/functions/v1/process-payment',{
@@ -836,13 +843,13 @@ function setLoading(on){
           token:result.token,        // Card nonce (safe — single-use, expires fast)
           amount:totalCents,         // Amount in cents
           email:email,               // Buyer email for Square receipt
-          note:selectedTier+' — '+fname+' '+lname,
+          note:tier+' — '+fname+' '+lname,
           location_id:SQUARE_LOCATION // Public location ID
         })
       });
       const payData=await payRes.json();
       if(payData.payment&&payData.payment.status==='COMPLETED'){
-        confirmTicket(fname,lname,email,phone);
+        confirmTicket(fname,lname,email,phone,tier,price,discount,smsOptIn);
       }else{
         showError('Payment failed: '+(payData.errors?.[0]?.detail||'Please try again.'));
         setLoading(false);
@@ -864,16 +871,18 @@ function setLoading(on){
   // email/phone are passed in from handlePayment's captured values (not re-read
   // from the DOM here) because closeTickets() blanks those fields — if the buyer
   // closes the modal while the payment request is still in flight, a re-read
-  // would save/email the ticket with an empty email and phone number.
-  function confirmTicket(fname,lname,email,phone){
+  // would save/email the ticket with an empty email and phone number. tier/price/
+  // discount/smsOptIn are captured and passed in for the same reason — closeTickets()
+  // resets those globals, so re-reading them here would record the wrong tier/amount.
+  function confirmTicket(fname,lname,email,phone,tier,price,discount,smsOptIn){
   const ticketNum=genTicket();
   const refCode=genRef();
-  const smsOpt=document.getElementById('smsOpt').checked;
-  const totalPaid=Math.max(0,selectedPrice-promoDiscount);
+  const smsOpt=smsOptIn;
+  const totalPaid=Math.max(0,price-discount);
 
   document.getElementById('conf-ticket-num').textContent='TICKET #'+ticketNum;
   document.getElementById('conf-name').textContent=fname+' '+lname;
-  document.getElementById('conf-tier').textContent=selectedTier;
+  document.getElementById('conf-tier').textContent=tier;
   document.getElementById('ref-link-display').textContent='centraltxcardshows.com?ref='+refCode;
 
   // ── QR Code Generation ──
@@ -904,7 +913,7 @@ function setLoading(on){
     last_name: sanitize(lname),
     email: sanitize(email),
     phone: sanitize(phone),
-    ticket_type: selectedTier,
+    ticket_type: tier,
     ticket_number: ticketNum,
     show_name: 'Central Austin Card Show #1 (Jul 11-12)',
     amount_paid: totalPaid,
@@ -918,7 +927,7 @@ function setLoading(on){
     last_name: sanitize(lname),
     email: email,
     ticket_number: ticketNum,
-    ticket_type: selectedTier,
+    ticket_type: tier,
     amount_paid: totalPaid,
     qr_data: 'CTXCS-'+ticketNum+'-'+fname.toUpperCase()
   });
