@@ -576,6 +576,7 @@ footer{background:#0a0a0a;border-top:1px solid rgba(255,255,255,0.04);padding:44
       <div class="cico" id="conf-icon">✓</div>
       <div class="ctit">YOU'RE <span>IN!</span></div>
       <p class="csub">Show this ticket at the door.</p>
+      <div id="save-status" style="display:none;font-size:11px;padding:10px 14px;border-radius:6px;margin-bottom:10px;font-family:'DM Mono',monospace;"></div>
       <div id="email-status" style="display:none;font-size:11px;padding:10px 14px;border-radius:6px;margin-bottom:16px;font-family:'DM Mono',monospace;"></div>
       <div class="tcard">
         <div class="tnum" id="conf-ticket-num">TICKET #CTX-000000</div>
@@ -618,6 +619,10 @@ const SQUARE_LOCATION = 'LV7B6WKT4KXF4';
 const SUPABASE_KEY = 'sb_publishable_lJkcZ4H66DZw8WDxteq5rA_y7SQtusH';
 const PROMO_CODES = {'SLABPACKZ':3,'SEAN':3,'VIP10':5,'CENTRAL':2};
 
+// Returns true only if the ticket row actually landed in the tickets table.
+// The door scanner verifies against that table, so a failed save means the
+// buyer is holding a ticket that will be rejected at the door — the caller
+// must tell them rather than swallowing it into console.warn.
 async function saveTicketToSupabase(data) {
   try {
     const res = await fetch(SUPABASE_URL + '/rest/v1/tickets', {
@@ -632,12 +637,14 @@ async function saveTicketToSupabase(data) {
     });
     if (res.ok) {
       console.log('Ticket saved to Supabase');
-    } else {
-      const err = await res.text();
-      console.warn('Supabase save failed:', err);
+      return true;
     }
+    const err = await res.text();
+    console.warn('Supabase save failed:', err);
+    return false;
   } catch(e) {
     console.warn('Supabase error:', e);
+    return false;
   }
 }
 
@@ -722,7 +729,12 @@ function closeTickets(){
   document.getElementById('ticketFormInner').classList.remove('hidden');
   document.getElementById('confirmationView').classList.remove('active');
   document.getElementById('square-error').style.display='none';
-  paymentAttempts=0;
+  // paymentAttempts is deliberately NOT reset here. Resetting it let anyone
+  // clear the 5-failure lockout just by closing and reopening the modal, which
+  // defeated the lockout entirely — and contradicted the message the buyer is
+  // shown ("Please refresh the page and try again"). The counter now lives for
+  // the page session; setLoading(false) below re-applies the locked-out button
+  // state when the modal is reopened.
   // Reset tier selection
   selectedTier='GA - 1 Day'; selectedPrice=5; promoDiscount=0; promoApplied=false;
   document.querySelectorAll('.tier').forEach(t=>t.classList.remove('sel'));
@@ -908,6 +920,8 @@ function setLoading(on){
   // ── Save buyer data to Supabase ──
   // Inputs are sanitized before saving to prevent XSS/injection
   const sanitize = s => s.replace(/[<>"'&]/g, '').trim().slice(0, 100);
+  const saveEl = document.getElementById('save-status');
+  if (saveEl) saveEl.style.display = 'none';
   saveTicketToSupabase({
     first_name: sanitize(fname),
     last_name: sanitize(lname),
@@ -919,6 +933,18 @@ function setLoading(on){
     amount_paid: totalPaid,
     referral_code: refCode,
     sms_opt_in: smsOpt
+  }).then(saved => {
+    // The card has already been charged at this point, so never hide the
+    // ticket — but if the row didn't reach the tickets table, the door
+    // scanner will read this ticket as "not found in system". Warn the buyer
+    // so they contact us before the show instead of being turned away at the
+    // door with a ticket that looks perfectly valid on screen.
+    if (saved || !saveEl) return;
+    saveEl.style.display = 'block';
+    saveEl.style.background = 'rgba(248,113,113,0.06)';
+    saveEl.style.border = '1px solid rgba(248,113,113,0.18)';
+    saveEl.style.color = '#f87171';
+    saveEl.textContent = '⚠ Payment went through, but we could not register ticket ' + ticketNum + '. Screenshot this and email slabpackz@gmail.com so we can confirm you before the show.';
   });
 
   // ── Fire confirmation email ──
