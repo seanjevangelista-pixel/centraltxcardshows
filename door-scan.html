@@ -427,6 +427,29 @@ async function checkTicket(ticketNum) {
       SUPABASE_URL + '/rest/v1/tickets?ticket_number=eq.' + q + '&select=*',
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
     );
+    // A failed lookup is NOT the same as "no such ticket". An expired/rotated
+    // API key, an RLS change, or a Supabase outage all return a non-2xx JSON
+    // error object here — and reporting that as "Ticket Not Found" tells door
+    // staff to turn away a paying customer holding a perfectly valid ticket.
+    // Report it as a lookup failure so staff retry or check manually instead.
+    if (!res.ok) {
+      let detail = '';
+      try {
+        const errBody = await res.json();
+        detail = errBody?.message || errBody?.error || '';
+      } catch (_) {}
+      console.error('Ticket lookup failed:', res.status, detail);
+      showResult('error', null, 'Lookup failed (' + res.status + ') — scan again or check manually');
+      showInvalidOverlay(
+        'Could not verify this ticket — the system is not responding. Scan again before turning anyone away.',
+        'Lookup Failed',
+        'CANNOT VERIFY'
+      );
+      addRecent(ticketNum, 'invalid', 'Lookup failed');
+      updateStats('invalid');
+      return;
+    }
+
     const data = await res.json();
 
     if (!Array.isArray(data) || data.length === 0) {
@@ -471,8 +494,10 @@ async function checkTicket(ticketNum) {
     );
 
     if (!patchRes.ok) {
-      showResult('invalid', null, 'Check-in failed — scan again');
-      showInvalidOverlay('Could not save check-in status. Please scan again.', 'Check-In Failed');
+      // The ticket IS valid — we already read it back above. Only the write
+      // failed, so this must never render as "Invalid Ticket".
+      showResult('error', null, 'Check-in failed — scan again');
+      showInvalidOverlay('This ticket is valid but check-in did not save. Scan again.', 'Check-In Failed', 'CANNOT VERIFY');
       addRecent(ticketNum, 'invalid', name);
       updateStats('invalid');
       return;
@@ -496,8 +521,8 @@ async function checkTicket(ticketNum) {
     vibrate();
 
   } catch (e) {
-    showResult('invalid', null, 'Network error — check connection');
-    showInvalidOverlay('Could not reach the server. Check your connection.', 'Network Error');
+    showResult('error', null, 'Network error — check connection');
+    showInvalidOverlay('Could not reach the server. Check your connection, then scan again.', 'Network Error', 'CANNOT VERIFY');
     addRecent(ticketNum, 'invalid', 'Network error');
     updateStats('invalid');
   }
@@ -509,7 +534,11 @@ function showResult(type, ticket, message) {
   const status = document.getElementById('result-status');
   const details = document.getElementById('result-details');
 
-  card.className = 'result-card ' + type;
+  // 'error' means our own lookup broke, not that the ticket is bad. It borrows
+  // the invalid card's red styling but must NOT read "Invalid Ticket" — door
+  // staff scan the header, and that header would tell them to turn away a
+  // paying customer over a Supabase outage.
+  card.className = 'result-card ' + (type === 'error' ? 'invalid' : type);
 
   if (type === 'valid') {
     icon.textContent = '✅';
@@ -528,6 +557,10 @@ function showResult(type, ticket, message) {
       <div class="result-row"><span class="result-key">Ticket Type</span><span class="result-val">${ticket.ticket_type}</span></div>
       <div class="result-row"><span class="result-key">Status</span><span class="result-val" style="color:#EF9F27;">${message}</span></div>
     `;
+  } else if (type === 'error') {
+    icon.textContent = '⚠️';
+    status.textContent = "Can't Verify — Don't Turn Away";
+    details.innerHTML = `<div class="result-row"><span class="result-key">Reason</span><span class="result-val" style="color:#E31837;">${message}</span></div>`;
   } else {
     icon.textContent = '❌';
     status.textContent = 'Invalid Ticket';
@@ -552,11 +585,30 @@ function dismissInvalid() {
   document.getElementById('invalidOverlay').classList.remove('show');
 }
 
+// Normalizes whatever door staff type into the canonical CTX-XXXXXX form.
+// They read the number off the buyer's screen or email, where it is rendered
+// as "TICKET #CTX-R7KW2Q" — so a leading '#', a stray "TICKET" label, spaces,
+// or the raw QR payload ("CTXCS-CTX-R7KW2Q-SEAN") all show up in practice.
+// The old version only handled a bare code or an exact "CTX-" prefix; anything
+// else got mangled into e.g. "CTX-#CTX-R7KW2Q" and rejected a valid buyer.
+function normalizeTicketNumber(raw) {
+  let s = raw.toUpperCase().replace(/^TICKET\b/, '').replace(/[\s#]/g, '');
+  if (s.startsWith('CTXCS-')) s = s.slice(6);   // full QR payload pasted in
+  if (s.startsWith('CTX-')) s = s.slice(4);
+  // "CTXR7KW2Q" — dash dropped. Length-guarded so a code that legitimately
+  // begins with CTX (e.g. a bare "CTXABC") isn't chopped down to "ABC":
+  // generated codes are 6 chars, so only a longer string is prefix + code.
+  else if (s.startsWith('CTX') && s.length > 6) s = s.slice(3);
+  s = s.split('-')[0];                          // trim the trailing "-FIRSTNAME"
+  return s ? 'CTX-' + s : '';
+}
+
 async function manualLookup() {
   const input = document.getElementById('manual-input');
-  const raw = input.value.trim().toUpperCase();
+  const raw = input.value.trim();
   if (!raw) return;
-  const ticketNum = raw.startsWith('CTX-') ? raw : 'CTX-' + raw;
+  const ticketNum = normalizeTicketNumber(raw);
+  if (!ticketNum) return;
   await checkTicket(ticketNum);
   input.value = '';
 }
