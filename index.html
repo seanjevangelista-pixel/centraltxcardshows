@@ -698,20 +698,44 @@ async function sendConfirmationEmail(data) {
 let selectedTier='GA - 1 Day', selectedPrice=5, promoDiscount=0, promoApplied=false;
 let squareCard=null, payments=null;
 
+// Resolves true only once the card form is actually attached. A failed init used
+// to be swallowed into console.warn, which left the buyer staring at an empty
+// grey box where the card fields should be, and every Pay click answering
+// "Payment form loading — please wait a moment." forever — there was no retry
+// and no way to find out it was never coming. Now the failure is visible in the
+// card box, and handlePayment retries before giving up.
+let squareInitPromise=null;
+
 async function initSquare(){
-  if(!window.Square||squareCard)return;
-  try{
-    payments=window.Square.payments(SQUARE_APP_ID,SQUARE_LOCATION);
-    squareCard=await payments.card({
-      style:{
-        '.input-container':{borderColor:'#222222',borderRadius:'3px'},
-        '.input-container.is-focus':{borderColor:'#E31837'},
-        'input':{backgroundColor:'#222222',color:'#FFFFFF'},
-        'input::placeholder':{color:'rgba(255,255,255,0.2)'},
-      }
-    });
-    await squareCard.attach('#square-card-container');
-  }catch(e){console.warn('Square init:',e);}
+  if(squareCard)return true;
+  if(!window.Square)return false;
+  if(squareInitPromise)return squareInitPromise;
+  squareInitPromise=(async()=>{
+    const box=document.getElementById('square-card-container');
+    try{
+      if(box)box.innerHTML='';   // clear a previous failure notice before retrying
+      payments=window.Square.payments(SQUARE_APP_ID,SQUARE_LOCATION);
+      const card=await payments.card({
+        style:{
+          '.input-container':{borderColor:'#222222',borderRadius:'3px'},
+          '.input-container.is-focus':{borderColor:'#E31837'},
+          'input':{backgroundColor:'#222222',color:'#FFFFFF'},
+          'input::placeholder':{color:'rgba(255,255,255,0.2)'},
+        }
+      });
+      await card.attach('#square-card-container');
+      squareCard=card;
+      return true;
+    }catch(e){
+      console.warn('Square init:',e);
+      payments=null;
+      if(box)box.innerHTML='<div style="padding:14px;font-size:13px;line-height:1.55;color:rgba(255,255,255,0.55);">Card form didn\'t load. Refresh the page to try again — or email slabpackz@gmail.com and we\'ll reserve your ticket.</div>';
+      return false;
+    }finally{
+      squareInitPromise=null;
+    }
+  })();
+  return squareInitPromise;
 }
 
 // ── TICKET MODAL ──
@@ -836,7 +860,19 @@ function setLoading(on){
     confirmTicket(fname,lname,email,phone,tier,price,discount,smsOptIn);
     return;
   }
-  if(!squareCard){showError('Payment form loading — please wait a moment.',false);return;}
+  // Retry the card-form init rather than telling the buyer to keep waiting for
+  // something that already failed and was never going to retry itself.
+  if(!squareCard){
+    setLoading(true);
+    const ready=await initSquare();
+    if(!ready){
+      setLoading(false);
+      showError(window.Square
+        ? 'Card form didn\'t load. Please refresh the page and try again — or email slabpackz@gmail.com and we\'ll reserve your ticket.'
+        : 'Card payments are unavailable right now. Please refresh the page — or email slabpackz@gmail.com and we\'ll reserve your ticket.',false);
+      return;
+    }
+  }
   setLoading(true);
   try{
     const result=await squareCard.tokenize();

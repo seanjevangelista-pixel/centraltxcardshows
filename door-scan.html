@@ -289,7 +289,7 @@
     <div class="manual-title">Manual Ticket Lookup</div>
     <div class="manual-row">
       <input class="manual-input" id="manual-input" placeholder="Enter ticket # e.g. CTX-R7KW2Q" />
-      <button class="manual-btn" onclick="manualLookup()">Look Up</button>
+      <button class="manual-btn" id="manual-btn" onclick="manualLookup()">Look Up</button>
     </div>
   </div>
 
@@ -603,14 +603,33 @@ function normalizeTicketNumber(raw) {
   return s ? 'CTX-' + s : '';
 }
 
+// Guards the manual path against a double submit — two fast Enter presses, or a
+// double-tapped "Look Up" on a phone screen. The input was only cleared AFTER
+// the await, so the second submit read the same number and fired a second
+// lookup while the first was still in flight. The conditional PATCH correctly
+// refuses the second write, but the buyer then sees "Already Checked In" on
+// their FIRST entry — the exact screen that gets a paying customer turned away
+// at the door. The scanner path has scanCooldown; the manual path had nothing.
+let lookupBusy = false;
+
 async function manualLookup() {
+  if (lookupBusy) return;
   const input = document.getElementById('manual-input');
+  const btn = document.getElementById('manual-btn');
   const raw = input.value.trim();
   if (!raw) return;
   const ticketNum = normalizeTicketNumber(raw);
   if (!ticketNum) return;
-  await checkTicket(ticketNum);
+  lookupBusy = true;
+  // Clear before awaiting so a queued Enter can't resubmit the same number.
   input.value = '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Checking...'; }
+  try {
+    await checkTicket(ticketNum);
+  } finally {
+    lookupBusy = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Look Up'; }
+  }
 }
 
 document.getElementById('manual-input').addEventListener('keydown', e => {
