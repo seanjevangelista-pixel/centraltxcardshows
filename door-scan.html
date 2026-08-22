@@ -319,10 +319,27 @@ let scanning = false;
 let starting = false;
 let stats = { total: 0, valid: 0, invalid: 0 };
 let recentScans = [];
-let lastScanned = '';
-let scanCooldown = false;
 let resultHideTimeout = null;
 let overlayHideTimeout = null;
+
+// The camera keeps firing onScanSuccess ~10x/second while it is pointed at a
+// ticket, so the same code has to be suppressed after it has been handled.
+// The old guard cleared `lastScanned` on a flat 3s timer, which meant staff
+// holding the phone on the ticket while they waved the buyer through got a
+// second read a moment later — and that read found checked_in already true, so
+// it threw the big red "ALREADY CHECKED IN" overlay for the person they had
+// just let in, and added a phantom count to Rejected plus a duplicate row in
+// Recent Scans. Suppress a code that got a definitive answer for long enough
+// to clear the doorway; suppress only briefly after an error, because the
+// error screen explicitly tells staff to scan again.
+const SUPPRESS_RESOLVED_MS = 20000;
+const SUPPRESS_ERROR_MS    = 1500;
+let lastScanned = '';
+let lastScannedAt = 0;
+let lastScanSuppressMs = 0;
+// Guards a lookup that is already in flight — shared by the camera and the
+// manual "Look Up" box so the two can never race each other on the same ticket.
+let lookupBusy = false;
 
 function toggleScanner() {
   if (starting) return;
@@ -398,24 +415,36 @@ function resetScannerUi() {
 }
 
 async function onScanSuccess(decodedText) {
-  if (scanCooldown || decodedText === lastScanned) return;
-  lastScanned = decodedText;
-  scanCooldown = true;
-  setTimeout(() => { scanCooldown = false; lastScanned = ''; }, 3000);
+  // Shared with the manual path — a lookup already in flight (camera or typed)
+  // must never have a second one race it. The old flat 3s timer expired while a
+  // slow request was still outstanding, so a weak venue connection could fire
+  // two lookups for the same ticket.
+  if (lookupBusy) return;
+  if (decodedText === lastScanned && Date.now() - lastScannedAt < lastScanSuppressMs) return;
 
-  const parts = decodedText.split('-');
-  if (!decodedText.startsWith('CTXCS-') || parts.length < 3) {
-    showResult('invalid', null, 'Invalid QR code — not a valid ticket');
-    showInvalidOverlay('Not a Central TX Card Shows ticket.', 'Invalid QR Format');
-    addRecent(null, 'invalid', 'Unknown QR');
-    updateStats('invalid');
-    return;
+  lookupBusy = true;
+  try {
+    const parts = decodedText.split('-');
+    let outcome;
+    if (!decodedText.startsWith('CTXCS-') || parts.length < 3) {
+      showResult('invalid', null, 'Invalid QR code — not a valid ticket');
+      showInvalidOverlay('Not a Central TX Card Shows ticket.', 'Invalid QR Format');
+      addRecent(null, 'invalid', 'Unknown QR');
+      updateStats('invalid');
+      outcome = 'invalid';
+    } else {
+      outcome = await checkTicket(parts[1] + '-' + parts[2]);
+    }
+    lastScanned = decodedText;
+    lastScannedAt = Date.now();
+    lastScanSuppressMs = outcome === 'error' ? SUPPRESS_ERROR_MS : SUPPRESS_RESOLVED_MS;
+  } finally {
+    lookupBusy = false;
   }
-
-  const ticketNum = parts[1] + '-' + parts[2];
-  await checkTicket(ticketNum);
 }
 
+// Returns the outcome ('valid' | 'already' | 'invalid' | 'error') so the scanner
+// knows whether the code got a definitive answer or is worth re-reading.
 async function checkTicket(ticketNum) {
   try {
     // Encode the ticket number — it can come straight from the manual-lookup
@@ -447,7 +476,7 @@ async function checkTicket(ticketNum) {
       );
       addRecent(ticketNum, 'invalid', 'Lookup failed');
       updateStats('invalid');
-      return;
+      return 'error';
     }
 
     const data = await res.json();
@@ -457,7 +486,7 @@ async function checkTicket(ticketNum) {
       showInvalidOverlay('This ticket number does not exist in our system.', 'Ticket Not Found');
       addRecent(ticketNum, 'invalid', 'Not found');
       updateStats('invalid');
-      return;
+      return 'invalid';
     }
 
     const ticket = data[0];
@@ -471,7 +500,7 @@ async function checkTicket(ticketNum) {
       showInvalidOverlay('Ticket was already scanned at ' + scannedAt + '.', 'Already Checked In', 'ALREADY CHECKED IN');
       addRecent(ticketNum, 'already', name);
       updateStats('invalid');
-      return;
+      return 'already';
     }
 
     // Conditional PATCH — only flips checked_in if it's still false. This closes the
@@ -500,7 +529,7 @@ async function checkTicket(ticketNum) {
       showInvalidOverlay('This ticket is valid but check-in did not save. Scan again.', 'Check-In Failed', 'CANNOT VERIFY');
       addRecent(ticketNum, 'invalid', name);
       updateStats('invalid');
-      return;
+      return 'error';
     }
 
     const patched = await patchRes.json();
@@ -512,19 +541,21 @@ async function checkTicket(ticketNum) {
       showInvalidOverlay('This ticket was just checked in by another scan.', 'Already Checked In', 'ALREADY CHECKED IN');
       addRecent(ticketNum, 'already', name);
       updateStats('invalid');
-      return;
+      return 'already';
     }
 
     showResult('valid', ticket, '');
     addRecent(ticketNum, 'valid', name);
     updateStats('valid');
     vibrate();
+    return 'valid';
 
   } catch (e) {
     showResult('error', null, 'Network error — check connection');
     showInvalidOverlay('Could not reach the server. Check your connection, then scan again.', 'Network Error', 'CANNOT VERIFY');
     addRecent(ticketNum, 'invalid', 'Network error');
     updateStats('invalid');
+    return 'error';
   }
 }
 
@@ -609,8 +640,9 @@ function normalizeTicketNumber(raw) {
 // lookup while the first was still in flight. The conditional PATCH correctly
 // refuses the second write, but the buyer then sees "Already Checked In" on
 // their FIRST entry — the exact screen that gets a paying customer turned away
-// at the door. The scanner path has scanCooldown; the manual path had nothing.
-let lookupBusy = false;
+// at the door. The scanner path has its own re-read suppression; the manual
+// path had nothing. Both now share the `lookupBusy` flag declared above, so a
+// typed lookup and a camera scan can never overlap either.
 
 async function manualLookup() {
   if (lookupBusy) return;

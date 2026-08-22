@@ -770,6 +770,10 @@ function closeTickets(){
   document.getElementById('lname').value='';
   document.getElementById('email').value='';
   document.getElementById('phone').value='';
+  // The SMS box defaults to checked in the markup but was never reset here, so
+  // if one buyer unchecked it the next buyer on the same phone silently
+  // inherited the opt-out.
+  document.getElementById('smsOpt').checked=true;
   updateSummary();
   setLoading(false);
 }
@@ -958,6 +962,12 @@ function setLoading(on){
   const sanitize = s => s.replace(/[<>"'&]/g, '').trim().slice(0, 100);
   const saveEl = document.getElementById('save-status');
   if (saveEl) saveEl.style.display = 'none';
+  // Clear the previous buyer's email-delivery notice too. Neither closeTickets()
+  // nor sendConfirmationEmail() resets it, so a second purchase in the same page
+  // session opened its confirmation still showing the first buyer's red
+  // "Email delivery failed" warning until the new send finished.
+  const emailStatusEl = document.getElementById('email-status');
+  if (emailStatusEl) emailStatusEl.style.display = 'none';
   saveTicketToSupabase({
     first_name: sanitize(fname),
     last_name: sanitize(lname),
@@ -1052,8 +1062,12 @@ function setLoading(on){
     // Disable button while saving
     if(btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
 
+    // The response was never checked, so a rejected insert (RLS change, table
+    // rename, bad key, validation error) still showed "You're on the list!" and
+    // cleared the box — quietly losing a Show #2 marketing address every time.
+    let saved = false, duplicate = false;
     try {
-      await fetch(SUPABASE_URL + '/rest/v1/email_signups', {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/email_signups', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1067,13 +1081,29 @@ function setLoading(on){
           created_at: new Date().toISOString()
         })
       });
+      if (res.ok) {
+        saved = true;
+      } else {
+        const body = await res.text();
+        // Already on the list (unique constraint) — from the visitor's side
+        // that IS success, so don't scare them with an error.
+        duplicate = res.status === 409 || body.indexOf('23505') !== -1;
+        if (!duplicate) console.warn('Email signup save failed:', res.status, body);
+      }
     } catch(e) {
       console.warn('Email signup save failed:', e);
     }
 
-    // Show success regardless
     successEl.style.display = 'block';
-    emailInput.value = '';
+    if (saved || duplicate) {
+      successEl.style.color = 'rgba(255,255,255,0.4)';
+      successEl.textContent = "✓ You're on the list!";
+      emailInput.value = '';
+    } else {
+      // Leave the address in the box so they can retry instead of retyping it.
+      successEl.style.color = '#f87171';
+      successEl.textContent = "⚠ Couldn't save your email — please try again, or send it to slabpackz@gmail.com.";
+    }
     if(btn) { btn.disabled = false; btn.textContent = 'Notify Me'; }
   }
 </script>
