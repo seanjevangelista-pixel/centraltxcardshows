@@ -878,40 +878,68 @@ function setLoading(on){
     }
   }
   setLoading(true);
+  // Tokenization is kept in its own try/catch. Nothing has been charged yet at
+  // this stage, so "please try again" is safe advice here — but it is NOT safe
+  // once the charge request below has gone out (see the comment on that block).
+  let result;
   try{
-    const result=await squareCard.tokenize();
-    if(result.status==='OK'){
-      const totalCents=Math.max(0,(price-discount))*100;
-      // ── Payment processed server-side via Supabase Edge Function ──
-      // The Square token never touches the browser — only the card nonce does
-      const payRes=await fetch('https://ocupmoghnqascnxjfsez.supabase.co/functions/v1/process-payment',{
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'apikey':SUPABASE_KEY,
-          'Authorization':'Bearer '+SUPABASE_KEY
-        },
-        body:JSON.stringify({
-          token:result.token,        // Card nonce (safe — single-use, expires fast)
-          amount:totalCents,         // Amount in cents
-          email:email,               // Buyer email for Square receipt
-          note:tier+' — '+fname+' '+lname,
-          location_id:SQUARE_LOCATION // Public location ID
-        })
-      });
-      const payData=await payRes.json();
-      if(payData.payment&&payData.payment.status==='COMPLETED'){
-        confirmTicket(fname,lname,email,phone,tier,price,discount,smsOptIn);
-      }else{
-        showError('Payment failed: '+(payData.errors?.[0]?.detail||'Please try again.'));
-        setLoading(false);
-      }
-    }else{
-      showError(result.errors?.map(e=>e.message).join(', ')||'Card error.');
-      setLoading(false);
-    }
+    result=await squareCard.tokenize();
   }catch(e){
-    showError('Something went wrong. Please try again.');
+    console.warn('Tokenize error:',e);
+    showError('Something went wrong reading your card. Please try again.');
+    setLoading(false);
+    return;
+  }
+  if(result.status!=='OK'){
+    showError(result.errors?.map(e=>e.message).join(', ')||'Card error.');
+    setLoading(false);
+    return;
+  }
+  const totalCents=Math.max(0,(price-discount))*100;
+  // ── Payment processed server-side via Supabase Edge Function ──
+  // The Square token never touches the browser — only the card nonce does.
+  //
+  // Everything from here on has already sent a charge request. A failure now is
+  // an UNKNOWN outcome, not a decline — the card may well have been charged.
+  // This used to sit inside one big try/catch whose only answer was "Something
+  // went wrong. Please try again.", and res.json() throws on any non-JSON body:
+  // a Supabase gateway 502/504 (an HTML error page), an empty body, or a
+  // connection dropped after the request left the phone. On venue wifi that is
+  // exactly what happens — so the buyer was being told to retry a payment that
+  // may have already succeeded, and paying twice for a $5 ticket. Read the body
+  // as text and parse it ourselves so an unreadable response is reported for
+  // what it is instead of being flattened into a generic retry prompt.
+  let payData=null;
+  try{
+    const payRes=await fetch('https://ocupmoghnqascnxjfsez.supabase.co/functions/v1/process-payment',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':SUPABASE_KEY,
+        'Authorization':'Bearer '+SUPABASE_KEY
+      },
+      body:JSON.stringify({
+        token:result.token,        // Card nonce (safe — single-use, expires fast)
+        amount:totalCents,         // Amount in cents
+        email:email,               // Buyer email for Square receipt
+        note:tier+' — '+fname+' '+lname,
+        location_id:SQUARE_LOCATION // Public location ID
+      })
+    });
+    const raw=await payRes.text();
+    payData=raw?JSON.parse(raw):null;
+  }catch(e){
+    console.warn('Payment result unreadable:',e);
+  }
+  if(!payData){
+    showError('We couldn\'t confirm whether your payment went through — please do NOT pay again. Check your email for a Square receipt, then email slabpackz@gmail.com and we\'ll get your ticket sorted.');
+    setLoading(false);
+    return;
+  }
+  if(payData.payment&&payData.payment.status==='COMPLETED'){
+    confirmTicket(fname,lname,email,phone,tier,price,discount,smsOptIn);
+  }else{
+    showError('Payment failed: '+(payData.errors?.[0]?.detail||'Please try again.'));
     setLoading(false);
   }
 }
