@@ -501,7 +501,10 @@ async function checkTicket(ticketNum) {
     }
 
     const ticket = data[0];
-    const name = ticket.first_name + ' ' + ticket.last_name;
+    // Raw concatenation rendered a missing surname as the literal string "null"
+    // in Recent Scans ("Marcus null") — the result card already routes these
+    // through esc(), which maps null to '', so only this line was affected.
+    const name = [ticket.first_name, ticket.last_name].filter(Boolean).join(' ') || 'Ticket holder';
 
     if (ticket.checked_in) {
       const scannedAt = ticket.checked_in_at
@@ -514,13 +517,25 @@ async function checkTicket(ticketNum) {
       return 'already';
     }
 
-    // Conditional PATCH — only flips checked_in if it's still false. This closes the
-    // race where two scanners (or a double-tap on manual lookup) both read
-    // checked_in:false before either write lands, which would otherwise let the
-    // same ticket admit two people. Prefer: return=representation lets us see
+    // Conditional PATCH — only flips checked_in if it isn't already true. This
+    // closes the race where two scanners (or a double-tap on manual lookup) both
+    // read checked_in:false before either write lands, which would otherwise let
+    // the same ticket admit two people. Prefer: return=representation lets us see
     // whether our write actually matched a row.
+    //
+    // `not.is.true` rather than `eq.false`: the read above treats a NULL
+    // checked_in as "not checked in" (`if (ticket.checked_in)` is falsy for
+    // NULL), but `checked_in=eq.false` does NOT match NULL — in SQL, NULL = false
+    // is NULL, not true. The checkout in index.html never sets checked_in on
+    // insert, so whether a fresh ticket lands as false or NULL is down to the
+    // column default alone. If it is NULL, the two paths disagree: the lookup
+    // says "let them in", the write matches zero rows, and the code below reads
+    // that as "someone else just checked this in" — throwing ALREADY CHECKED IN
+    // at a first-time buyer holding a valid ticket. `not.is.true` matches both
+    // false and NULL while still refusing a ticket that is genuinely already
+    // true, so the write agrees with the read either way.
     const patchRes = await fetch(
-      SUPABASE_URL + '/rest/v1/tickets?ticket_number=eq.' + q + '&checked_in=eq.false',
+      SUPABASE_URL + '/rest/v1/tickets?ticket_number=eq.' + q + '&checked_in=not.is.true',
       {
         method: 'PATCH',
         headers: {

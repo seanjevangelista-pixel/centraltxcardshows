@@ -980,8 +980,14 @@ function setLoading(on){
         correctLevel: QRCode.CorrectLevel.H
       });
     } catch(e) {
-      // Fallback: show ticket number as text if QR fails
-      qrContainer.innerHTML = '<div style="text-align:center;padding:10px;font-family:monospace;font-size:10px;color:#000;word-break:break-all;">'+ticketNum+'</div>';
+      // Fallback: show ticket number as text if QR fails (qrcodejs is loaded from
+      // a CDN, so a blocked or slow venue connection leaves QRCode undefined and
+      // lands here). The ticket is still perfectly valid — the door scanner has a
+      // manual lookup box that takes this number — so say so, rather than leaving
+      // the buyer holding what looks like a broken ticket.
+      qrContainer.innerHTML =
+        '<div style="text-align:center;padding:12px 10px;font-family:monospace;font-size:13px;font-weight:700;color:#000;word-break:break-all;">'+ticketNum+'</div>'+
+        '<div style="text-align:center;padding:0 10px 10px;font-family:sans-serif;font-size:10px;line-height:1.5;color:#444;">QR didn\'t load — show this number at the door, staff can look it up.</div>';
     }
   }, 300);
 
@@ -1055,6 +1061,16 @@ function setLoading(on){
       link.download = 'CTX-Ticket-'+ticketNum+'.png';
       link.href = img.src;
       link.click();
+    } else {
+      // No canvas and no img means QR generation fell back to the plain-text
+      // ticket number above. The button used to do nothing at all here — the
+      // buyer taps "Save QR Code" on a ticket they just paid for and gets
+      // silence, with no idea whether it saved. Tell them what to do instead.
+      const btn = document.querySelector('#confirmationView button[onclick="downloadQR()"]');
+      if(btn){
+        btn.textContent = 'No QR to save — screenshot this ticket';
+        setTimeout(()=>{ btn.textContent = '↓ Save QR Code'; }, 4000);
+      }
     }
   }
 
