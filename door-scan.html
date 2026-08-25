@@ -314,6 +314,17 @@
 const SUPABASE_URL = 'https://ocupmoghnqascnxjfsez.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_lJkcZ4H66DZw8WDxteq5rA_y7SQtusH';
 
+// Every value rendered below comes from the tickets table, which is written by
+// the public checkout with the publishable key and has RLS disabled — so a row's
+// name/type/show fields are not trustworthy markup. They were being dropped
+// straight into innerHTML, which at the door means a malformed or hostile row
+// can garble or rewrite the check-in screen the staff are reading to decide who
+// gets in. Escape everything on its way into the DOM.
+const esc = (v) =>
+  String(v ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+  );
+
 let scanner = null;
 let scanning = false;
 let starting = false;
@@ -575,27 +586,27 @@ function showResult(type, ticket, message) {
     icon.textContent = '✅';
     status.textContent = 'Valid Ticket — Let Them In';
     details.innerHTML = `
-      <div class="result-row"><span class="result-key">Name</span><span class="result-val">${ticket.first_name} ${ticket.last_name}</span></div>
-      <div class="result-row"><span class="result-key">Ticket Type</span><span class="result-val">${ticket.ticket_type}</span></div>
-      <div class="result-row"><span class="result-key">Ticket #</span><span class="result-val">${ticket.ticket_number}</span></div>
-      <div class="result-row"><span class="result-key">Show</span><span class="result-val">${ticket.show_name}</span></div>
+      <div class="result-row"><span class="result-key">Name</span><span class="result-val">${esc(ticket.first_name)} ${esc(ticket.last_name)}</span></div>
+      <div class="result-row"><span class="result-key">Ticket Type</span><span class="result-val">${esc(ticket.ticket_type)}</span></div>
+      <div class="result-row"><span class="result-key">Ticket #</span><span class="result-val">${esc(ticket.ticket_number)}</span></div>
+      <div class="result-row"><span class="result-key">Show</span><span class="result-val">${esc(ticket.show_name)}</span></div>
     `;
   } else if (type === 'already') {
     icon.textContent = '🟡';
     status.textContent = 'Already Checked In';
     details.innerHTML = `
-      <div class="result-row"><span class="result-key">Name</span><span class="result-val">${ticket.first_name} ${ticket.last_name}</span></div>
-      <div class="result-row"><span class="result-key">Ticket Type</span><span class="result-val">${ticket.ticket_type}</span></div>
-      <div class="result-row"><span class="result-key">Status</span><span class="result-val" style="color:#EF9F27;">${message}</span></div>
+      <div class="result-row"><span class="result-key">Name</span><span class="result-val">${esc(ticket.first_name)} ${esc(ticket.last_name)}</span></div>
+      <div class="result-row"><span class="result-key">Ticket Type</span><span class="result-val">${esc(ticket.ticket_type)}</span></div>
+      <div class="result-row"><span class="result-key">Status</span><span class="result-val" style="color:#EF9F27;">${esc(message)}</span></div>
     `;
   } else if (type === 'error') {
     icon.textContent = '⚠️';
     status.textContent = "Can't Verify — Don't Turn Away";
-    details.innerHTML = `<div class="result-row"><span class="result-key">Reason</span><span class="result-val" style="color:#E31837;">${message}</span></div>`;
+    details.innerHTML = `<div class="result-row"><span class="result-key">Reason</span><span class="result-val" style="color:#E31837;">${esc(message)}</span></div>`;
   } else {
     icon.textContent = '❌';
     status.textContent = 'Invalid Ticket';
-    details.innerHTML = `<div class="result-row"><span class="result-key">Reason</span><span class="result-val" style="color:#E31837;">${message}</span></div>`;
+    details.innerHTML = `<div class="result-row"><span class="result-key">Reason</span><span class="result-val" style="color:#E31837;">${esc(message)}</span></div>`;
   }
 
   card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -692,8 +703,8 @@ function renderRecent() {
   list.innerHTML = recentScans.map(s => `
     <div class="recent-item">
       <div>
-        <div class="recent-name">${s.name}</div>
-        <div class="recent-ticket">${s.ticketNum || 'Unknown'} · ${s.time}</div>
+        <div class="recent-name">${esc(s.name)}</div>
+        <div class="recent-ticket">${esc(s.ticketNum || 'Unknown')} · ${esc(s.time)}</div>
       </div>
       <div class="recent-badge ${s.type}">${s.type === 'valid' ? '✓ Valid' : s.type === 'already' ? '⚠ Duplicate' : '✕ Invalid'}</div>
     </div>
