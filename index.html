@@ -816,6 +816,16 @@ function genRef(){return 'CTX'+Math.random().toString(36).substr(2,5).toUpperCas
 let paymentAttempts = 0;
 const MAX_ATTEMPTS = 5;
 
+// True from the moment a charge request leaves the browser until we know its
+// outcome. Nothing used to track this: closeTickets() blanks the form and calls
+// setLoading(false), which re-enabled the Pay button, so a buyer who tapped ✕
+// while the request was still in flight on venue wifi could reopen the modal,
+// retype their details and pay a SECOND time for the same ticket while the first
+// charge was still outstanding. paymentAttempts is no help — it only counts
+// failures, and a slow request has not failed. Keep the button locked until the
+// outcome is known.
+let paymentInFlight = false;
+
 function showError(msg,countAttempt){
   if(countAttempt!==false) paymentAttempts++;
   const el=document.getElementById('square-error');
@@ -828,8 +838,11 @@ function showError(msg,countAttempt){
 function setLoading(on){
   const btn=document.getElementById('pay-btn');
   const lockedOut = paymentAttempts>=MAX_ATTEMPTS;
-  btn.textContent=on?'Processing...':(lockedOut?'Too Many Attempts':'Pay & Get My Ticket');
-  btn.disabled=on||lockedOut; btn.style.opacity=(on||lockedOut)?'0.6':'1';
+  // paymentInFlight is folded in here so closeTickets()'s setLoading(false) can't
+  // hand a buyer a live Pay button while their first charge is still outstanding.
+  const busy = on||paymentInFlight;
+  btn.textContent=busy?'Processing...':(lockedOut?'Too Many Attempts':'Pay & Get My Ticket');
+  btn.disabled=busy||lockedOut; btn.style.opacity=(busy||lockedOut)?'0.6':'1';
 }
 
 // ── PAYMENT HANDLER ──
@@ -838,6 +851,8 @@ function setLoading(on){
   // Edge Function at: supabase.co/functions/v1/process-payment
   async function handlePayment(){
   if(paymentAttempts>=MAX_ATTEMPTS){showError('Too many failed attempts. Please refresh the page and try again.',false);return;}
+  // A charge is already out and unresolved — never send a second one for it.
+  if(paymentInFlight){showError('Your payment is still processing — please don\'t pay again. We\'ll show your ticket as soon as it clears.',false);return;}
   const fname=document.getElementById('fname').value.trim();
   const lname=document.getElementById('lname').value.trim();
   const email=document.getElementById('email').value.trim();
@@ -910,6 +925,7 @@ function setLoading(on){
   // as text and parse it ourselves so an unreadable response is reported for
   // what it is instead of being flattened into a generic retry prompt.
   let payData=null;
+  paymentInFlight=true;
   try{
     const payRes=await fetch('https://ocupmoghnqascnxjfsez.supabase.co/functions/v1/process-payment',{
       method:'POST',
@@ -932,6 +948,8 @@ function setLoading(on){
     console.warn('Payment result unreadable:',e);
   }
   if(!payData){
+    // Unknown outcome — the charge may have landed. Leave paymentInFlight set so
+    // the Pay button stays locked; the message below is the only safe next step.
     showError('We couldn\'t confirm whether your payment went through — please do NOT pay again. Check your email for a Square receipt, then email slabpackz@gmail.com and we\'ll get your ticket sorted.');
     setLoading(false);
     return;
@@ -939,6 +957,8 @@ function setLoading(on){
   if(payData.payment&&payData.payment.status==='COMPLETED'){
     confirmTicket(fname,lname,email,phone,tier,price,discount,smsOptIn);
   }else{
+    // A definite decline — nothing was charged, so it is safe to let them retry.
+    paymentInFlight=false;
     showError('Payment failed: '+(payData.errors?.[0]?.detail||'Please try again.'));
     setLoading(false);
   }
@@ -955,6 +975,13 @@ function setLoading(on){
   // discount/smsOptIn are captured and passed in for the same reason — closeTickets()
   // resets those globals, so re-reading them here would record the wrong tier/amount.
   function confirmTicket(fname,lname,email,phone,tier,price,discount,smsOptIn){
+  paymentInFlight=false;
+  // The buyer may have closed the modal while the charge was in flight (see
+  // paymentInFlight above). Everything below renders the ticket into that modal,
+  // so reopen it — otherwise they have paid and the only copy of their ticket
+  // number and QR code is sitting inside a panel they can't see.
+  document.getElementById('ticketModal').classList.add('active');
+  document.body.style.overflow='hidden';
   const ticketNum=genTicket();
   const refCode=genRef();
   const smsOpt=smsOptIn;
