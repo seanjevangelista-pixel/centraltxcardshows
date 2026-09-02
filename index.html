@@ -1103,6 +1103,15 @@ function setLoading(on){
 
   function copyRef(){
   const link=document.getElementById('ref-link-display').textContent;
+  // navigator.clipboard is missing entirely (not just a rejected permission) in
+  // some in-app/social-share browsers and non-secure contexts. Calling
+  // .writeText on undefined throws synchronously outside any promise chain, so
+  // the .catch() below never runs and the button silently does nothing.
+  if(!navigator.clipboard||!navigator.clipboard.writeText){
+    const btn=document.querySelector('.copybtn');
+    if(btn){btn.textContent='Copy failed';setTimeout(()=>btn.textContent='Copy',2000);}
+    return;
+  }
   navigator.clipboard.writeText('https://'+link).then(()=>{
     const btn=document.querySelector('.copybtn');
     if(!btn)return;
