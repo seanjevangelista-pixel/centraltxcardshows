@@ -954,8 +954,19 @@ function setLoading(on){
     setLoading(false);
     return;
   }
-  if(payData.payment&&payData.payment.status==='COMPLETED'){
+  const payStatus=payData.payment&&payData.payment.status;
+  if(payStatus==='COMPLETED'){
     confirmTicket(fname,lname,email,phone,tier,price,discount,smsOptIn);
+  }else if(!(Array.isArray(payData.errors)&&payData.errors.length)&&payStatus!=='FAILED'&&payStatus!=='CANCELED'){
+    // Not COMPLETED, but not a decline either: a payment that came back
+    // APPROVED/PENDING (the card is authorized and may still be captured), or a
+    // body with neither a payment nor Square's errors[] (e.g. the Edge Function
+    // failing after it reached Square). This used to fall into the decline branch
+    // below — "Payment failed: Please try again." with the Pay button unlocked —
+    // inviting a second charge for one ticket. Treat it as an unknown outcome.
+    console.warn('Payment outcome unclear:',payData);
+    showError('We couldn\'t confirm whether your payment went through — please do NOT pay again. Check your email for a Square receipt, then email slabpackz@gmail.com and we\'ll get your ticket sorted.');
+    setLoading(false);
   }else{
     // A definite decline — nothing was charged, so it is safe to let them retry.
     paymentInFlight=false;
