@@ -695,6 +695,15 @@ async function sendConfirmationEmail(data) {
   }
 }
 
+// Show #1 ran July 11–12, 2026 (doors close 5:00 PM Central on the 12th), but
+// nothing ever stopped selling it — months later the card still read "On Sale
+// Now" and Pay still charged a real card for a show that had already happened,
+// leaving every such buyer to chase a refund. Close sales at the end of the
+// show. Move this date (and show_name in confirmTicket) when Show #2 goes on sale.
+const SALES_CLOSE_AT = new Date('2026-07-12T17:00:00-05:00').getTime();
+function salesClosed(){ return Date.now() >= SALES_CLOSE_AT; }
+const SALES_CLOSED_MSG = 'Ticket sales for Show #1 have closed — the show was July 11–12. Join the list below to hear about Show #2 first.';
+
 let selectedTier='GA - 1 Day', selectedPrice=5, promoDiscount=0, promoApplied=false;
 let squareCard=null, payments=null;
 
@@ -744,6 +753,12 @@ async function initSquare(){
   function openTickets(){
   document.getElementById('ticketModal').classList.add('active');
   document.body.style.overflow='hidden';
+  if(salesClosed()){
+    // Don't load the card form for a show that can't be bought.
+    setLoading(false);
+    showError(SALES_CLOSED_MSG,false);
+    return;
+  }
   setTimeout(initSquare,100);
 }
 
@@ -841,8 +856,9 @@ function setLoading(on){
   // paymentInFlight is folded in here so closeTickets()'s setLoading(false) can't
   // hand a buyer a live Pay button while their first charge is still outstanding.
   const busy = on||paymentInFlight;
-  btn.textContent=busy?'Processing...':(lockedOut?'Too Many Attempts':'Pay & Get My Ticket');
-  btn.disabled=busy||lockedOut; btn.style.opacity=(busy||lockedOut)?'0.6':'1';
+  const closed = salesClosed();
+  btn.textContent=busy?'Processing...':(closed?'Sales Closed':(lockedOut?'Too Many Attempts':'Pay & Get My Ticket'));
+  btn.disabled=busy||lockedOut||closed; btn.style.opacity=(busy||lockedOut||closed)?'0.6':'1';
 }
 
 // ── PAYMENT HANDLER ──
@@ -850,6 +866,7 @@ function setLoading(on){
   // The card number never touches our server — Square tokenizes it client-side
   // Edge Function at: supabase.co/functions/v1/process-payment
   async function handlePayment(){
+  if(salesClosed()){showError(SALES_CLOSED_MSG,false);setLoading(false);return;}
   if(paymentAttempts>=MAX_ATTEMPTS){showError('Too many failed attempts. Please refresh the page and try again.',false);return;}
   // A charge is already out and unresolved — never send a second one for it.
   if(paymentInFlight){showError('Your payment is still processing — please don\'t pay again. We\'ll show your ticket as soon as it clears.',false);return;}
@@ -1197,6 +1214,11 @@ function setLoading(on){
     }
     if(btn) { btn.disabled = false; btn.textContent = 'Notify Me'; }
   }
+
+if(salesClosed()){
+  const badge=document.querySelector('.cbadge.live');
+  if(badge)badge.textContent='Sales Closed';
+}
 </script>
 
 <script>
