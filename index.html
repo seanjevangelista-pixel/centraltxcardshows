@@ -1224,6 +1224,11 @@ if(salesClosed()){
 <script>
 // Scroll reveal
 (function(){
+  // .reveal sets opacity:0 until the observer marks it visible. Without
+  // IntersectionObserver (older in-app/social browsers) the constructor below
+  // threw AFTER every card had been hidden, leaving the show and ticket cards
+  // permanently invisible. Skip the effect entirely there.
+  if(!('IntersectionObserver' in window)) return;
   var els = document.querySelectorAll('.sec .eye, .sec .stitle, .card, .vbox, .sslot, .venue-wrap');
   els.forEach(function(el){ el.classList.add('reveal'); });
   var obs = new IntersectionObserver(function(entries){
