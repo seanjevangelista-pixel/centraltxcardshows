@@ -284,10 +284,18 @@ footer{background:#0a0a0a;border-top:1px solid rgba(255,255,255,0.04);padding:44
 (function(){
   var b=document.getElementById('pl-bar'),l=document.getElementById('pl'),p=0;
   var iv=setInterval(function(){p+=Math.random()*14;if(p>90)p=90;if(b)b.style.width=p+'%';},90);
-  window.addEventListener('load',function(){
+  // 'load' waits on every external script/font (Square, qrcodejs, Google Fonts).
+  // One stalled CDN on venue/mobile wifi kept this full-screen black overlay up
+  // until the browser gave up on the request, so the whole site looked dead.
+  // Lift it after 4s regardless.
+  var done=false;
+  function hide(){
+    if(done)return;done=true;
     clearInterval(iv);if(b)b.style.width='100%';
     setTimeout(function(){if(l){l.style.opacity='0';l.style.visibility='hidden';setTimeout(function(){l.remove();},600);}},350);
-  });
+  }
+  window.addEventListener('load',hide);
+  setTimeout(hide,4000);
 })();
 </script>
 
