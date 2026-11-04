@@ -767,6 +767,12 @@ async function initSquare(){
     showError(SALES_CLOSED_MSG,false);
     return;
   }
+  // closeTickets() hides the error, which left a reopened modal on a dead
+  // "Processing..." button with nothing saying why or warning against paying again.
+  if(paymentInFlight){
+    showError(paymentUnconfirmed?UNCONFIRMED_MSG:'Your payment is still processing — please don\'t pay again. We\'ll show your ticket as soon as it clears.',false);
+    return;
+  }
   setTimeout(initSquare,100);
 }
 
@@ -848,6 +854,12 @@ const MAX_ATTEMPTS = 5;
 // failures, and a slow request has not failed. Keep the button locked until the
 // outcome is known.
 let paymentInFlight = false;
+
+// The charge may have landed but we can't tell. Not counted as a failed attempt:
+// the Pay button is already locked, and on a 5th attempt counting it swapped this
+// warning for "Too many failed attempts... try again", inviting a second charge.
+let paymentUnconfirmed = false;
+const UNCONFIRMED_MSG = 'We couldn\'t confirm whether your payment went through — please do NOT pay again. Check your email for a Square receipt, then email slabpackz@gmail.com and we\'ll get your ticket sorted.';
 
 function showError(msg,countAttempt){
   if(countAttempt!==false) paymentAttempts++;
@@ -975,7 +987,8 @@ function setLoading(on){
   if(!payData){
     // Unknown outcome — the charge may have landed. Leave paymentInFlight set so
     // the Pay button stays locked; the message below is the only safe next step.
-    showError('We couldn\'t confirm whether your payment went through — please do NOT pay again. Check your email for a Square receipt, then email slabpackz@gmail.com and we\'ll get your ticket sorted.');
+    paymentUnconfirmed=true;
+    showError(UNCONFIRMED_MSG,false);
     setLoading(false);
     return;
   }
@@ -990,7 +1003,8 @@ function setLoading(on){
     // below — "Payment failed: Please try again." with the Pay button unlocked —
     // inviting a second charge for one ticket. Treat it as an unknown outcome.
     console.warn('Payment outcome unclear:',payData);
-    showError('We couldn\'t confirm whether your payment went through — please do NOT pay again. Check your email for a Square receipt, then email slabpackz@gmail.com and we\'ll get your ticket sorted.');
+    paymentUnconfirmed=true;
+    showError(UNCONFIRMED_MSG,false);
     setLoading(false);
   }else{
     // A definite decline — nothing was charged, so it is safe to let them retry.
