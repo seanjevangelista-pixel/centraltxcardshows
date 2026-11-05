@@ -454,6 +454,22 @@ async function onScanSuccess(decodedText) {
   }
 }
 
+// Calendar day at the venue, regardless of the scanning phone's own time zone.
+function showDay(when) {
+  return new Date(when).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+}
+
+// "GA - 2 Days" and "VIP - 2 Days" are good for both days, but checked_in is a
+// single flag set on day one, so these buyers got ALREADY CHECKED IN at the door
+// on the day two they paid for. Let one back in only if its last scan was
+// yesterday: same-day repeats are still refused, and so is a 2-day ticket from an
+// earlier show, whose last scan is months old.
+function isSecondDayEntry(ticket) {
+  if (!ticket.checked_in || !ticket.checked_in_at) return false;
+  if (!/2 Days/i.test(ticket.ticket_type || '')) return false;
+  return showDay(ticket.checked_in_at) === showDay(Date.now() - 86400000);
+}
+
 // Returns the outcome ('valid' | 'already' | 'invalid' | 'error') so the scanner
 // knows whether the code got a definitive answer or is worth re-reading.
 async function checkTicket(ticketNum) {
@@ -506,9 +522,13 @@ async function checkTicket(ticketNum) {
     // through esc(), which maps null to '', so only this line was affected.
     const name = [ticket.first_name, ticket.last_name].filter(Boolean).join(' ') || 'Ticket holder';
 
-    if (ticket.checked_in) {
+    const secondDay = isSecondDayEntry(ticket);
+    if (ticket.checked_in && !secondDay) {
+      // Time alone reads as "today" — a ticket used on an earlier day needs its date.
       const scannedAt = ticket.checked_in_at
-        ? new Date(ticket.checked_in_at).toLocaleTimeString()
+        ? (showDay(ticket.checked_in_at) === showDay(Date.now())
+            ? new Date(ticket.checked_in_at).toLocaleTimeString()
+            : new Date(ticket.checked_in_at).toLocaleString())
         : 'earlier';
       showResult('already', ticket, 'Already checked in at ' + scannedAt);
       showInvalidOverlay('Ticket was already scanned at ' + scannedAt + '.', 'Already Checked In', 'ALREADY CHECKED IN');
@@ -534,8 +554,14 @@ async function checkTicket(ticketNum) {
     // at a first-time buyer holding a valid ticket. `not.is.true` matches both
     // false and NULL while still refusing a ticket that is genuinely already
     // true, so the write agrees with the read either way.
+    //
+    // A second-day entry is already true, so it matches on the first-day stamp
+    // instead: moving that stamp is what stops two scanners both admitting it.
+    const patchFilter = secondDay
+      ? '&checked_in_at=eq.' + encodeURIComponent(ticket.checked_in_at)
+      : '&checked_in=not.is.true';
     const patchRes = await fetch(
-      SUPABASE_URL + '/rest/v1/tickets?ticket_number=eq.' + q + '&checked_in=not.is.true',
+      SUPABASE_URL + '/rest/v1/tickets?ticket_number=eq.' + q + patchFilter,
       {
         method: 'PATCH',
         headers: {
